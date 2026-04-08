@@ -1,0 +1,85 @@
+[tool.poetry]
+name = "markdown-viewer-app"
+version = "1.0.0"
+description = "Beautiful markdown viewer and renderer for CLI, CI/CD, and automated workflows"
+authors = ["Ofelia B Webb <ofelia.b.webb@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/dimpletz/markdown-viewer"
+repository = "https://github.com/dimpletz/markdown-viewer"
+documentation = "https://github.com/dimpletz/markdown-viewer#readme"
+keywords = ["markdown", "viewer", "renderer", "cli", "ci-cd", "automation", "html", "mermaid", "emoji"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+packages = [
+    { include = "markdown_viewer" }
+]
+include = ["markdown_viewer/electron/**/*", "markdown_viewer/templates/**/*", "markdown_viewer/static/**/*"]
+
+[tool.poetry.dependencies]
+python = ">=3.8.1,<3.15"
+markdown = "^3.4.0"
+pymdown-extensions = "^10.0"
+pygments = "^2.15.0"
+
+# Optional dependencies for full GUI app
+flask = {version = "^2.3.0", optional = true}
+flask-cors = {version = "^4.0.0", optional = true}
+flask-wtf = {version = "^1.2.0", optional = true}
+marshmallow = {version = "^3.20.0", optional = true}
+python-markdown-math = {version = "^0.8", optional = true}
+python-docx = {version = "^0.8.11", optional = true}
+playwright = {version = "^1.40.0", optional = true}
+deep-translator = {version = "^1.11.0", optional = true}
+pillow = {version = "^10.0.0", optional = true}
+beautifulsoup4 = {version = "^4.12.0", optional = true}
+lxml = {version = ">=4.9.0,<6.0.0", optional = true}
+chardet = {version = "^5.2.0", optional = true}
+
+[tool.poetry.extras]
+full = ["flask", "flask-cors", "flask-wtf", "marshmallow", "python-markdown-math", "python-docx", "playwright", "deep-translator", "pillow", "beautifulsoup4", "lxml", "chardet"]
+export = ["python-docx", "playwright", "pillow"]
+translate = ["deep-translator"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
+mypy = "^1.4.0"
+
+[tool.poetry.scripts]
+mdview = "markdown_viewer.cli:main"
+markdown-viewer = "markdown_viewer.__main__:main"
+mdviewer = "markdown_viewer.__main__:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312', 'py313', 'py314']
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --cov=markdown_viewer --cov-report=html --cov-report=term"
