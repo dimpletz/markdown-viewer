@@ -220,14 +220,15 @@ def test_main_share_word(tmp_path):
 
 
 def test_main_file_not_found(tmp_path):
-    """main() returns 1 when the target file does not exist."""
+    """main() prompts for another file when target doesn't exist; returns 0 when user cancels."""
     nonexistent = tmp_path / "ghost.md"
 
-    with patch("sys.argv", ["mdview", str(nonexistent), "--no-browser"]):
+    with patch("sys.argv", ["mdview", str(nonexistent), "--no-browser"]), \
+         patch("builtins.input", side_effect=EOFError):
         from markdown_viewer.cli import main
         result = main()
 
-    assert result == 1
+    assert result == 0
 
 
 def test_main_unexpected_error_returns_2(tmp_path):
@@ -244,16 +245,14 @@ def test_main_unexpected_error_returns_2(tmp_path):
 
 
 def test_main_opens_browser_by_default(tmp_path):
-    """main() without --no-browser opens rendered file in browser."""
+    """main() without --no-browser/--output/--keep opens file via Flask app."""
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
-    html_file = tmp_path / "result.html"
 
     with patch("sys.argv", ["mdview", str(md_file)]), \
-         patch("markdown_viewer.cli.render_markdown_file", return_value=html_file) as mock_r:
+         patch("markdown_viewer.cli._open_in_flask_app") as mock_flask:
         from markdown_viewer.cli import main
         result = main()
 
     assert result == 0
-    _, kwargs = mock_r.call_args
-    assert kwargs.get("open_browser") is True
+    mock_flask.assert_called_once_with(md_file)

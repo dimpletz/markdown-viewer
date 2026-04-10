@@ -74,3 +74,4 @@ markdown_viewer/temp/
 !markdown_viewer/electron/renderer/index.html
 temp/
 test_*.md
+pytest_out.txt

@@ -96,6 +96,10 @@ class MarkdownViewerApp {
         } else {
             this.setStatus('Backend unavailable - some features may not work', 'warning');
         }
+        const pdfAvailable = health.capabilities?.pdf_export !== false;
+        if (!pdfAvailable) {
+            this.btnExportPdf.style.display = 'none';
+        }
     }
 
     async openFile() {
@@ -110,6 +114,53 @@ class MarkdownViewerApp {
         
         if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
             this.loadFile(result.filePaths[0]);
+        }
+    }
+
+    /**
+     * Load a file by absolute path via the backend API.
+     * Used when the file path is known server-side (CLI ?file= param, or Electron IPC).
+     */
+    async loadFileFromServer(filePath) {
+        try {
+            this.showLoading();
+            this.setStatus('Loading file...');
+
+            const result = await window.MarkdownViewerAPI.openFile(filePath);
+
+            if (result.success) {
+                this.currentFile = filePath;
+                this._loadedFromServer = true;
+                this.currentMarkdown = result.content;
+                this.currentHTML = result.html || '';
+
+                if (result.html) {
+                    // Backend already rendered — display directly
+                    const sanitized = DOMPurify.sanitize(result.html, {
+                        ADD_TAGS: ['mermaid'],
+                        ADD_ATTR: ['class', 'id', 'href']
+                    });
+                    this.currentHTML = sanitized;
+                    this.preview.innerHTML = this.currentHTML;
+                    await window.MarkdownRenderer.renderMermaidDiagrams(this.preview);
+                    window.MarkdownRenderer.renderMath(this.preview);
+                } else {
+                    await this.renderMarkdown();
+                }
+
+                this.setStatus('File loaded successfully');
+                this.filePath.textContent = filePath;
+                this.welcome.style.display = 'none';
+                this.preview.style.display = 'block';
+            } else {
+                throw new Error(result.error?.message || 'Failed to load file');
+            }
+        } catch (error) {
+            console.error('Error loading file from server:', error);
+            this.setStatus(`Error: ${error.message}`, 'error');
+            alert(`Failed to load file: ${error.message}`);
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -150,10 +201,22 @@ class MarkdownViewerApp {
             this.showLoading();
             this.setStatus('Rendering markdown...');
 
-            // Use the renderer
-            const html = await window.MarkdownRenderer.render(this.currentMarkdown);
-            // SECURITY: Always sanitize HTML before assignment to prevent XSS
-            const sanitized = DOMPurify.sanitize(html);
+            // Use the backend for full-featured rendering (TOC, emojis, diagrams, math)
+            let html;
+            try {
+                const result = await window.MarkdownViewerAPI.renderMarkdown(this.currentMarkdown);
+                html = result.html || '';
+            } catch (apiError) {
+                // Fallback to client-side renderer if backend is unavailable
+                console.warn('Backend render failed, falling back to client-side:', apiError);
+                html = await window.MarkdownRenderer.render(this.currentMarkdown);
+            }
+
+            // SECURITY: Sanitize HTML — allow class/id attrs needed for TOC anchors and diagrams
+            const sanitized = DOMPurify.sanitize(html, {
+                ADD_TAGS: ['mermaid'],
+                ADD_ATTR: ['class', 'id', 'href']
+            });
 
             // Only update the DOM once we have a valid result
             this.currentHTML = sanitized;
@@ -179,7 +242,12 @@ class MarkdownViewerApp {
 
     async refreshPreview() {
         if (this.currentFile) {
-            await this.loadFile(this.currentFile);
+            // If loaded from server path (absolute path), reload via server
+            if (this._loadedFromServer) {
+                await this.loadFileFromServer(this.currentFile);
+            } else {
+                await this.loadFile(this.currentFile);
+            }
         }
     }
 
@@ -209,7 +277,6 @@ class MarkdownViewerApp {
                 if (!saveResult.success) throw new Error(saveResult.error || 'Failed to save PDF');
                 
                 this.setStatus('PDF exported successfully');
-                alert('PDF exported successfully!');
             }
         } catch (error) {
             console.error('Export error:', error);
@@ -250,7 +317,6 @@ class MarkdownViewerApp {
                 if (!saveResult.success) throw new Error(saveResult.error || 'Failed to save Word document');
                 
                 this.setStatus('Word document exported successfully');
-                alert('Word document exported successfully!');
             }
         } catch (error) {
             console.error('Export error:', error);
@@ -401,4 +467,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Create and initialize app
     window.app = new MarkdownViewerApp();
+
+    // Auto-load file passed via ?file= URL parameter (browser/CLI mode)
+    const urlFile = new URLSearchParams(window.location.search).get('file');
+    if (urlFile) {
+        window.app.loadFileFromServer(urlFile);
+    } else {
+        // No file param — show the welcome screen
+        const welcome = document.getElementById('welcome');
+        if (welcome) welcome.style.display = '';
+    }
 });

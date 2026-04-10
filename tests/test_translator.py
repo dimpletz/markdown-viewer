@@ -61,12 +61,12 @@ def test_translate_invalid_language_raises(translator):
 
 
 def test_translate_calls_google_translator(translator):
-    """translate() uses GoogleTranslator and returns translated text."""
+    """translate() uses MyMemoryTranslator and returns translated text."""
     mock_instance = MagicMock()
     mock_instance.translate.return_value = "Hola mundo"
 
     with patch(
-        "markdown_viewer.translators.content_translator.GoogleTranslator",
+        "markdown_viewer.translators.content_translator.MyMemoryTranslator",
         return_value=mock_instance,
     ):
         result = translator.translate("Hello world", target_lang="es")
@@ -82,7 +82,7 @@ def test_translate_code_blocks_unchanged(translator):
     mock_instance.translate.return_value = "should not appear"
 
     with patch(
-        "markdown_viewer.translators.content_translator.GoogleTranslator",
+        "markdown_viewer.translators.content_translator.MyMemoryTranslator",
         return_value=mock_instance,
     ):
         result = translator.translate(code_content, target_lang="es")
@@ -99,7 +99,7 @@ def test_translate_caches_translator_instance(translator):
     mock_instance.translate.return_value = "Bonjour"
 
     with patch(
-        "markdown_viewer.translators.content_translator.GoogleTranslator",
+        "markdown_viewer.translators.content_translator.MyMemoryTranslator",
         return_value=mock_instance,
     ):
         translator.translate("Hello", target_lang="fr")
@@ -126,7 +126,7 @@ def test_cache_eviction_at_max_size(translator):
     mock_instance.translate.return_value = "ok"
 
     with patch(
-        "markdown_viewer.translators.content_translator.GoogleTranslator",
+        "markdown_viewer.translators.content_translator.MyMemoryTranslator",
         return_value=mock_instance,
     ):
         translator.translate("Hello", target_lang="es")
@@ -153,9 +153,9 @@ def test_translate_falls_back_to_original_when_all_retries_fail(translator):
     mock_instance.translate.side_effect = Exception("network error")
 
     with patch(
-        "markdown_viewer.translators.content_translator.GoogleTranslator",
+        "markdown_viewer.translators.content_translator.MyMemoryTranslator",
         return_value=mock_instance,
-    ), patch("markdown_viewer.translators.content_translator.time.sleep"):
+    ):
         result = translator.translate("Hello world", target_lang="es")
 
     # Original text is preserved when all retries fail

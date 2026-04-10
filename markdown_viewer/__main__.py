@@ -75,7 +75,12 @@ def main():
     )
     
     args = parser.parse_args()
-    
+
+    # Allow access to the full filesystem root for local CLI use (server is localhost-only)
+    from pathlib import Path as _Path
+    import os as _os
+    _os.environ.setdefault('ALLOWED_DOCUMENTS_DIR', str(_Path(_Path.home().anchor)))
+
     # Start the Flask backend server
     print(f"Starting backend server on port {args.port}...")
     server_process = start_server(port=args.port, debug=False)
@@ -110,38 +115,18 @@ def main():
             print("\nShutting down...")
             server_process.terminate()
     else:
-        # Start Electron GUI
-        if check_electron():
-            try:
-                # Set environment variable for backend port
-                os.environ["BACKEND_PORT"] = str(args.port)
-                if args.file:
-                    os.environ["MARKDOWN_FILE"] = args.file
-                start_electron()
-                
-                # Keep server running
-                try:
-                    server_process.join()
-                except KeyboardInterrupt:
-                    print("\nShutting down...")
-                    server_process.terminate()
-            except Exception as e:
-                print(f"Error starting Electron: {e}")
-                print("Falling back to browser mode...")
-                webbrowser.open(f"http://localhost:{args.port}")
-                try:
-                    server_process.join()
-                except KeyboardInterrupt:
-                    print("\nShutting down...")
-                    server_process.terminate()
-        else:
-            print("Electron not found. Opening in browser...")
-            webbrowser.open(f"http://localhost:{args.port}")
-            try:
-                server_process.join()
-            except KeyboardInterrupt:
-                print("\nShutting down...")
-                server_process.terminate()
+        # No --browser or --no-gui flag: default to browser mode
+        print("Opening in browser... (use --no-gui to run server only)")
+        url = f"http://localhost:{args.port}"
+        if args.file:
+            url += f"?file={args.file}"
+        print(f"Opening {url} in browser...")
+        webbrowser.open(url)
+        try:
+            server_process.join()
+        except KeyboardInterrupt:
+            print("\nShutting down...")
+            server_process.terminate()
 
 
 if __name__ == "__main__":

@@ -9,15 +9,16 @@ from pathlib import Path
 # App factory
 # ---------------------------------------------------------------------------
 
-def test_create_app_without_secret_key_raises():
-    """create_app() raises RuntimeError when SECRET_KEY is absent."""
+def test_create_app_without_secret_key_auto_generates():
+    """create_app() auto-generates an ephemeral SECRET_KEY when absent."""
     # Ensure env var is not set
     os.environ.pop("SECRET_KEY", None)
 
     from markdown_viewer.app import create_app
 
-    with pytest.raises(RuntimeError, match="SECRET_KEY"):
-        create_app()
+    # Should succeed — auto-generates an ephemeral key for local use
+    app = create_app()
+    assert app.config.get("SECRET_KEY"), "A SECRET_KEY should be auto-generated"
 
 
 def test_create_app_with_config_succeeds(tmp_path):

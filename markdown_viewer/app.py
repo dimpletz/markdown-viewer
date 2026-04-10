@@ -6,6 +6,7 @@ from flask import Flask, g, jsonify, request, send_from_directory, Blueprint
 from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
 import os
+import pathlib
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any
@@ -19,10 +20,16 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB max file size
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
     TEMP_FOLDER = os.path.join(os.path.dirname(__file__), "temp")
-    ALLOWED_DOCUMENTS_DIR = os.environ.get('ALLOWED_DOCUMENTS_DIR', os.path.expanduser('~'))
+    # Default to filesystem root — the server only binds to 127.0.0.1 so
+    # restricting by path adds no real security for a local desktop tool.
+    ALLOWED_DOCUMENTS_DIR = os.environ.get(
+        'ALLOWED_DOCUMENTS_DIR',
+        str(pathlib.Path(pathlib.Path.home().anchor))  # C:\ on Windows, / on Unix
+    )
     
-    # Security settings
-    SESSION_COOKIE_SECURE = True
+    # Security settings — server always binds to 127.0.0.1 over HTTP,
+    # so SESSION_COOKIE_SECURE must be False (Secure flag is for HTTPS only).
+    SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Strict'
     WTF_CSRF_TIME_LIMIT = None  # CSRF token doesn't expire
@@ -31,7 +38,6 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    SESSION_COOKIE_SECURE = False  # Allow HTTP in development
 
 
 class ProductionConfig(Config):
@@ -73,18 +79,14 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
 
-    # In production, SECRET_KEY must be explicitly set.
-    # In development, auto-generate an ephemeral key so the app starts without manual setup.
+    # Auto-generate an ephemeral SECRET_KEY if not explicitly set.
+    # This server always binds to 127.0.0.1 only, so there is no session data
+    # worth protecting across restarts. A persistent SECRET_KEY is only needed
+    # when deploying as a shared/network-accessible server (set via env var).
     env = os.getenv('FLASK_ENV', 'production')
     if not os.environ.get('SECRET_KEY') and (config is None or 'SECRET_KEY' not in config):
-        if env == 'production':
-            raise RuntimeError(
-                "SECRET_KEY environment variable must be set. "
-                "Generate one using: python -c 'import secrets; print(secrets.token_hex())'"
-            )
-        else:
-            import secrets as _secrets
-            os.environ['SECRET_KEY'] = _secrets.token_hex()
+        import secrets as _secrets
+        os.environ['SECRET_KEY'] = _secrets.token_hex()
 
     # Load configuration
     try:

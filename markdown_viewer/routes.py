@@ -143,8 +143,22 @@ def health_check() -> Tuple[Dict[str, Any], int]:
     return jsonify({
         "status": "ok" if all_healthy else "degraded",
         "message": "Markdown Viewer API is running",
-        "checks": checks
+        "checks": checks,
+        "capabilities": {
+            "pdf_export": _check_playwright_available()
+        }
     }), status_code
+
+
+def _check_playwright_available() -> bool:
+    """Check if Playwright Chromium browser binary is installed."""
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            executable = p.chromium.executable_path
+            return os.path.exists(executable)
+    except Exception:
+        return False
 
 
 @api_bp.route("/csrf", methods=["GET"])

@@ -44,25 +44,32 @@ class FileHandler:
         if not self.is_markdown_file(file_path):
             raise ValueError(f"Not a markdown file: {file_path}")
         
-        # Detect encoding with limited bytes
+        # Always try UTF-8 first — it's the overwhelmingly common encoding for
+        # markdown files, and chardet frequently misidentifies UTF-8 files that
+        # contain emojis or other multibyte characters as Latin-1/Windows-1252.
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except UnicodeDecodeError:
+            pass
+
+        # UTF-8 failed: detect encoding from raw bytes and retry
         with open(file_path, 'rb') as f:
             raw_data = f.read(MAX_DETECTION_BYTES)
-            result = chardet.detect(raw_data)
-            
-            # Use detected encoding only if confidence is high enough
-            if result['confidence'] >= MIN_CONFIDENCE and result['encoding']:
-                encoding = result['encoding']
-                logger.debug(f"Detected encoding {encoding} with confidence {result['confidence']}")
-            else:
-                encoding = 'utf-8'  # Fallback to UTF-8
-                logger.debug(f"Low confidence ({result['confidence']}), using UTF-8")
-        
-        # Read with detected encoding
+        result = chardet.detect(raw_data)
+
+        if result['confidence'] >= MIN_CONFIDENCE and result['encoding']:
+            encoding = result['encoding']
+            logger.debug(f"Detected encoding {encoding} with confidence {result['confidence']}")
+        else:
+            encoding = 'utf-8'
+            logger.debug(f"Low confidence ({result['confidence']}), using UTF-8")
+
         try:
             with open(file_path, 'r', encoding=encoding, errors='replace') as f:
                 return f.read()
         except (UnicodeDecodeError, LookupError) as e:
-            logger.warning(f"Failed to read with {encoding}, trying UTF-8: {e}")
+            logger.warning(f"Failed to read with {encoding}, falling back to UTF-8: {e}")
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 return f.read()
     

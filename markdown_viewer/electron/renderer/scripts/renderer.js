@@ -42,7 +42,7 @@ class MarkdownRenderer {
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
-            securityLevel: 'strict',  // Prevent XSS attacks
+            securityLevel: 'antiscript',
             fontFamily: 'inherit'
         });
     }
@@ -94,19 +94,24 @@ class MarkdownRenderer {
      */
     async renderMermaidDiagrams(container) {
         const mermaidElements = container.querySelectorAll('.mermaid');
-        
-        for (const element of mermaidElements) {
-            try {
-                const id = element.id || `mermaid-${Date.now()}-${Math.random()}`;
-                element.id = id;
-                
-                const code = element.textContent;
-                const { svg } = await mermaid.render(id + '-svg', code);
-                element.innerHTML = svg;
-            } catch (error) {
-                console.error('Mermaid render error:', error);
-                element.innerHTML = `<pre style="color: red;">Error rendering diagram: ${error.message}</pre>`;
-            }
+        if (mermaidElements.length === 0) return;
+
+        // Reset any previously rendered elements so Mermaid re-processes them
+        mermaidElements.forEach(el => {
+            el.removeAttribute('data-processed');
+            el.innerHTML = el.textContent; // restore raw diagram source
+        });
+
+        try {
+            // Use Mermaid v10 run() API — it manages IDs and rendering internally
+            await mermaid.run({ nodes: Array.from(mermaidElements) });
+        } catch (error) {
+            console.error('Mermaid render error:', error);
+            mermaidElements.forEach(el => {
+                if (!el.querySelector('svg')) {
+                    el.innerHTML = `<pre style="color: red; padding: 1em;">Diagram error: ${error.message}</pre>`;
+                }
+            });
         }
     }
 

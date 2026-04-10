@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-10
+
+### Added
+- `mdview <file>` browser mode: opens the file directly in the browser with a single command
+- Detached background server: terminal returns immediately after the browser opens; server keeps running silently for subsequent calls
+- Auto-reloader: Flask server watches source files and restarts automatically when code changes (no manual server kill needed during development)
+
+### Fixed
+- Emoji and special characters now render correctly — `chardet` was misidentifying UTF-8 files as Windows-1252; UTF-8 is now always tried first
+- Welcome screen no longer flashes before the file loads when opening via `mdview <file>`
+- Export dialogs no longer show a success popup; the status bar updates silently, alert only shown on failure
+- Background server no longer opens a visible console window on Windows (`CREATE_NO_WINDOW` flag)
+- CSRF cookie no longer carries the `Secure` flag over plain HTTP, fixing authentication failures in Firefox and other strict browsers
+- Files outside the home directory (e.g. `C:\dev\`) are no longer blocked with 403
+
 ## [1.0.0] - 2026-04-07
 
 ### Added
