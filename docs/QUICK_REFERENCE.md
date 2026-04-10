@@ -148,7 +148,7 @@ mdview quarterly-report.md --export-pdf --keep
 ## ⚙️ Tested Configurations
 
 ✅ Windows 10/11  
-✅ Python 3.8-3.14  
+✅ Python 3.9-3.14  
 ✅ Outlook, Thunderbird, Gmail (desktop)  
 ✅ Chrome, Firefox, Edge browsers  
 ✅ Poetry & pip package managers

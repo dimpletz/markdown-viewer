@@ -11,14 +11,16 @@ def app(tmp_path):
     """Create a test Flask app with CSRF disabled."""
     (tmp_path / "temp").mkdir()
     (tmp_path / "uploads").mkdir()
-    return create_app({
-        "TESTING": True,
-        "SECRET_KEY": "test-secret-key",
-        "WTF_CSRF_ENABLED": False,
-        "ALLOWED_DOCUMENTS_DIR": str(tmp_path),
-        "TEMP_FOLDER": str(tmp_path / "temp"),
-        "UPLOAD_FOLDER": str(tmp_path / "uploads"),
-    })
+    return create_app(
+        {
+            "TESTING": True,
+            "SECRET_KEY": "test-secret-key",
+            "WTF_CSRF_ENABLED": False,
+            "ALLOWED_DOCUMENTS_DIR": str(tmp_path),
+            "TEMP_FOLDER": str(tmp_path / "temp"),
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
 
 
 @pytest.fixture
@@ -140,7 +142,9 @@ def test_render_markdown_value_error_returns_400(client):
 
 def test_render_markdown_unexpected_error_returns_500(client):
     """POST /api/render returns 500 on unexpected exception."""
-    with patch("markdown_viewer.routes.markdown_processor.process", side_effect=RuntimeError("boom")):
+    with patch(
+        "markdown_viewer.routes.markdown_processor.process", side_effect=RuntimeError("boom")
+    ):
         response = client.post("/api/render", json={"content": "# Hello"})
     assert response.status_code == 500
     data = response.get_json()
@@ -152,7 +156,9 @@ def test_open_file_unexpected_error_returns_500(client, tmp_path):
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
 
-    with patch("markdown_viewer.routes.file_handler.read_file", side_effect=RuntimeError("disk error")):
+    with patch(
+        "markdown_viewer.routes.file_handler.read_file", side_effect=RuntimeError("disk error")
+    ):
         response = client.post("/api/file/open", json={"path": str(md_file)})
     assert response.status_code == 500
     data = response.get_json()
@@ -328,9 +334,11 @@ def test_test_page_not_found(client):
 def test_check_disk_space_oserror(app):
     """check_disk_space() returns True when shutil.disk_usage raises OSError."""
     import shutil
+
     with app.app_context():
         with patch("shutil.disk_usage", side_effect=OSError("no space info")):
             from markdown_viewer.routes import check_disk_space
+
             result = check_disk_space()
     assert result is True
 
@@ -342,8 +350,10 @@ def test_cleanup_pdf_exporter_close_raises(app):
 
     with app.test_request_context("/"):
         from flask import g
+
         g.pdf_exporter = mock_exporter
         from markdown_viewer.routes import cleanup_resources
+
         cleanup_resources()  # should not raise
 
 
@@ -354,8 +364,10 @@ def test_cleanup_word_exporter_close_raises(app):
 
     with app.test_request_context("/"):
         from flask import g
+
         g.word_exporter = mock_exporter
         from markdown_viewer.routes import cleanup_resources
+
         cleanup_resources()  # should not raise
 
 
@@ -366,8 +378,10 @@ def test_cleanup_translator_close_raises(app):
 
     with app.test_request_context("/"):
         from flask import g
+
         g.translator = mock_translator
         from markdown_viewer.routes import cleanup_resources
+
         cleanup_resources()  # should not raise
 
 
@@ -376,8 +390,9 @@ def test_open_file_read_raises_file_not_found(client, tmp_path):
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
 
-    with patch("markdown_viewer.routes.file_handler.read_file",
-               side_effect=FileNotFoundError("gone")):
+    with patch(
+        "markdown_viewer.routes.file_handler.read_file", side_effect=FileNotFoundError("gone")
+    ):
         response = client.post("/api/file/open", json={"path": str(md_file)})
     assert response.status_code == 404
     data = response.get_json()
@@ -389,8 +404,7 @@ def test_open_file_read_raises_value_error(client, tmp_path):
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
 
-    with patch("markdown_viewer.routes.file_handler.read_file",
-               side_effect=ValueError("bad file")):
+    with patch("markdown_viewer.routes.file_handler.read_file", side_effect=ValueError("bad file")):
         response = client.post("/api/file/open", json={"path": str(md_file)})
     assert response.status_code == 400
     data = response.get_json()

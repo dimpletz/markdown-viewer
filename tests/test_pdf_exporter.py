@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock, call
 def test_close_when_not_initialized():
     """close() on a fresh PDFExporter does nothing (no error)."""
     from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
     exporter = PDFExporter()
     exporter.close()  # Should not raise
 
@@ -15,6 +16,7 @@ def test_close_when_not_initialized():
 def test_close_stops_playwright():
     """close() calls browser.close() and playwright.stop()."""
     from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
     exporter = PDFExporter()
 
     mock_browser = MagicMock()
@@ -33,6 +35,7 @@ def test_close_stops_playwright():
 def test_close_handles_browser_exception():
     """close() does not raise when browser.close() raises a non-event-loop error."""
     from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
     exporter = PDFExporter()
 
     mock_browser = MagicMock()
@@ -61,6 +64,7 @@ def test_context_manager_calls_close():
 def test_wrap_html_produces_complete_document():
     """_wrap_html() wraps a fragment in a full HTML document."""
     from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
     exporter = PDFExporter()
 
     result = exporter._wrap_html("<p>Hello</p>")

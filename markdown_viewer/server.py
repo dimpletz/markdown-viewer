@@ -2,17 +2,17 @@
 Server management for the markdown viewer backend.
 """
 
-import sys
 import threading
-import os
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def run_flask_app(port: int = 5000, debug: bool = False, use_reloader: bool = False) -> None:
+def run_flask_app(  # pylint: disable=unused-argument
+    port: int = 5000, debug: bool = False, use_reloader: bool = False
+) -> None:
     """Run the Flask application (called in a background thread or detached process)."""
-    from .app import create_app
+    from .app import create_app  # pylint: disable=import-outside-toplevel
 
     app = create_app()
     app.run(host="127.0.0.1", port=port, debug=False, use_reloader=use_reloader)
@@ -25,17 +25,19 @@ class _ServerHandle:
         self._thread = thread
 
     def join(self):
+        """Wait for the server thread to finish."""
         # On Windows, thread.join() with no timeout blocks KeyboardInterrupt entirely.
         # Poll with a short timeout so Ctrl+C can be delivered between polls.
         while self._thread.is_alive():
             self._thread.join(timeout=0.5)
 
     def terminate(self):
+        """Signal the server to stop (daemon thread exits with the main process)."""
         # Daemon thread dies automatically when the main process exits.
         # Nothing to do explicitly.
-        pass
 
     def is_alive(self):
+        """Return True if the server thread is still running."""
         return self._thread.is_alive()
 
 

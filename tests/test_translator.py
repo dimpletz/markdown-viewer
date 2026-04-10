@@ -14,6 +14,7 @@ def translator():
 # _split_content
 # ---------------------------------------------------------------------------
 
+
 def test_split_content_code_block_not_translatable(translator):
     """Fenced code blocks are marked non-translatable."""
     content = "```python\nprint('hello')\n```"
@@ -53,6 +54,7 @@ def test_split_content_mixed_preserves_structure(translator):
 # ---------------------------------------------------------------------------
 # translate
 # ---------------------------------------------------------------------------
+
 
 def test_translate_invalid_language_raises(translator):
     """Passing an unsupported target language raises ValueError."""
@@ -113,6 +115,7 @@ def test_translate_caches_translator_instance(translator):
 # Cache eviction
 # ---------------------------------------------------------------------------
 
+
 def test_cache_eviction_at_max_size(translator):
     """When cache reaches _MAX_CACHE_SIZE, oldest entry is evicted."""
     # Fill cache to the limit using fake keys directly
@@ -138,6 +141,7 @@ def test_cache_eviction_at_max_size(translator):
 # ---------------------------------------------------------------------------
 # get_supported_languages
 # ---------------------------------------------------------------------------
+
 
 def test_get_supported_languages_returns_dict(translator):
     """get_supported_languages returns a non-empty dict."""

@@ -4,10 +4,10 @@ import os
 import pytest
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
+
 
 def test_create_app_without_secret_key_auto_generates():
     """create_app() auto-generates an ephemeral SECRET_KEY when absent."""
@@ -28,13 +28,15 @@ def test_create_app_with_config_succeeds(tmp_path):
 
     from markdown_viewer.app import create_app
 
-    app = create_app({
-        "SECRET_KEY": "test-secret",
-        "TESTING": True,
-        "WTF_CSRF_ENABLED": False,
-        "TEMP_FOLDER": str(tmp_path / "temp"),
-        "UPLOAD_FOLDER": str(tmp_path / "uploads"),
-    })
+    app = create_app(
+        {
+            "SECRET_KEY": "test-secret",
+            "TESTING": True,
+            "WTF_CSRF_ENABLED": False,
+            "TEMP_FOLDER": str(tmp_path / "temp"),
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
 
     assert app is not None
     assert app.config["TESTING"] is True
@@ -49,12 +51,14 @@ def test_create_app_via_env_secret_key(tmp_path, monkeypatch):
 
     from markdown_viewer.app import create_app
 
-    app = create_app({
-        "TESTING": True,
-        "WTF_CSRF_ENABLED": False,
-        "TEMP_FOLDER": str(tmp_path / "temp"),
-        "UPLOAD_FOLDER": str(tmp_path / "uploads"),
-    })
+    app = create_app(
+        {
+            "TESTING": True,
+            "WTF_CSRF_ENABLED": False,
+            "TEMP_FOLDER": str(tmp_path / "temp"),
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
 
     assert app is not None
 
@@ -66,13 +70,15 @@ def test_api_blueprint_registered(tmp_path):
 
     from markdown_viewer.app import create_app
 
-    app = create_app({
-        "SECRET_KEY": "test-secret",
-        "TESTING": True,
-        "WTF_CSRF_ENABLED": False,
-        "TEMP_FOLDER": str(tmp_path / "temp"),
-        "UPLOAD_FOLDER": str(tmp_path / "uploads"),
-    })
+    app = create_app(
+        {
+            "SECRET_KEY": "test-secret",
+            "TESTING": True,
+            "WTF_CSRF_ENABLED": False,
+            "TEMP_FOLDER": str(tmp_path / "temp"),
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
 
     with app.test_client() as client:
         response = client.get("/api/health")
@@ -82,6 +88,7 @@ def test_api_blueprint_registered(tmp_path):
 # ---------------------------------------------------------------------------
 # CLI – render_markdown_file
 # ---------------------------------------------------------------------------
+
 
 def test_render_markdown_file_generates_html(tmp_path):
     """render_markdown_file() creates an HTML file with rendered content."""
@@ -142,20 +149,24 @@ def test_export_to_word_generates_docx(tmp_path):
 # markdown_viewer.__init__ lazy imports
 # ---------------------------------------------------------------------------
 
+
 def test_init_lazy_create_app():
     """markdown_viewer.create_app is lazily importable."""
     import markdown_viewer
+
     assert callable(markdown_viewer.create_app)
 
 
 def test_init_lazy_start_server():
     """markdown_viewer.start_server is lazily importable."""
     import markdown_viewer
+
     assert callable(markdown_viewer.start_server)
 
 
 def test_init_lazy_attribute_error():
     """Accessing an unknown attribute raises AttributeError."""
     import markdown_viewer
+
     with pytest.raises(AttributeError):
         _ = markdown_viewer.nonexistent_attribute_xyz

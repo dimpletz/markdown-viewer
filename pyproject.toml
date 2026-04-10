@@ -14,7 +14,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -28,27 +27,36 @@ packages = [
 include = ["markdown_viewer/electron/**/*", "markdown_viewer/templates/**/*", "markdown_viewer/static/**/*"]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<3.15"
-markdown = "^3.4.0"
-pymdown-extensions = "^10.0"
-pygments = "^2.15.0"
-flask = "^2.3.0"
-flask-cors = "^4.0.0"
+python = ">=3.9,<3.15"
+markdown = ">=3.8.1"              # CVE-2025-69534: DoS via malformed HTML; was ^3.4.0
+pymdown-extensions = ">=10.16.1" # CVE-2025-68142: ReDoS in caption regex; was ^10.0
+pygments = ">=2.20.0"            # CVE-2026-4539: ReDoS in AdlLexer; was ^2.15.0
+flask = ">=3.1.3"                # CVE-2026-27205: cache Vary header bypass; was ^2.3.0
+flask-cors = ">=6.0.0"           # CVE-2024-6866/6844/6839: CORS bypass; was ^4.0.0
 flask-wtf = "^1.2.0"
-marshmallow = "^3.20.0"
+marshmallow = ">=3.26.2"         # CVE-2025-68480: DoS via many=True; was ^3.20.0
 python-markdown-math = "^0.8"
 python-docx = "^0.8.11"
 playwright = "^1.40.0"
 deep-translator = "^1.11.0"
-pillow = "^10.0.0"
+pillow = [
+    {version = ">=12.1.1", python = ">=3.10"},  # CVE-2026-25990 (OOB write PSD) fixed
+    {version = ">=11.0.0,<12.0.0", python = ">=3.9,<3.10"} # CVE-2026-25990 unfixed on py3.9 (no 12.x wheel); avoid PSD files
+]
+greenlet = ">=3.2.0"
 beautifulsoup4 = "^4.12.0"
-lxml = ">=4.9.0,<6.0.0"
+lxml = ">=6.0.0"
 chardet = "^5.2.0"
+werkzeug = ">=3.1.6"             # CVE-2026-27199: Windows device name traversal; transitive via flask
+urllib3 = ">=2.6.3"              # CVE-2025-66418/66471/26-21441 etc. decompression bombs; transitive via requests
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
-black = "^23.0.0"
+black = [
+    {version = ">=26.3.1", python = ">=3.10"},   # CVE-2024-21503+CVE-2026-32274 fixed
+    {version = ">=24.3.0,<26.0.0", python = ">=3.9,<3.10"} # CVE-2024-21503 (ReDoS) fixed; CVE-2026-32274 N/A (--python-cell-magics not attacker-controlled)
+]
 flake8 = "^6.0.0"
 mypy = "^1.4.0"
 
@@ -63,7 +71,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312', 'py313', 'py314']
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313', 'py314']
 
 [tool.mypy]
 python_version = "3.14"

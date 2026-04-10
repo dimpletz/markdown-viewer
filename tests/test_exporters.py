@@ -36,10 +36,10 @@ This is a test paragraph.
 def test_pdf_export(sample_html):
     """Test PDF export."""
     exporter = PDFExporter()
-    
-    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         output_path = f.name
-    
+
     try:
         exporter.export(sample_html, output_path)
         assert os.path.exists(output_path)
@@ -52,10 +52,10 @@ def test_pdf_export(sample_html):
 def test_word_export(sample_html, sample_markdown):
     """Test Word export."""
     exporter = WordExporter()
-    
-    with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
         output_path = f.name
-    
+
     try:
         exporter.export(sample_html, sample_markdown, output_path)
         assert os.path.exists(output_path)

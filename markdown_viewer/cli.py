@@ -13,8 +13,9 @@ from typing import Optional
 import os
 import urllib.parse
 
-from .processors.markdown_processor import MarkdownProcessor
+from markdown_viewer import __version__
 
+from .processors.markdown_processor import MarkdownProcessor
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="light">
@@ -23,10 +24,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css">
     <style>
         /* Force light mode */
         :root {{
@@ -350,15 +351,15 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     returns immediately.  Otherwise a fully-detached background process is
     spawned (the terminal is still free after the browser opens).
     """
-    import subprocess
-    import time
-    import urllib.request
+    import subprocess  # pylint: disable=import-outside-toplevel
+    import time  # pylint: disable=import-outside-toplevel
+    import urllib.request  # pylint: disable=import-outside-toplevel,redefined-outer-name
 
     # Fail fast with a helpful message if Flask is not in the current Python environment.
     # This happens when a user has two Python installs (e.g. system Python + Poetry venv)
     # and runs the bare `mdview` entry point installed in the system Python.
     try:
-        import flask as _flask  # noqa: F401
+        import flask as _flask  # noqa: F401  # pylint: disable=import-outside-toplevel
     except ImportError:
         print("❌ Flask is not installed in the current Python environment.")
         print("   Run with:  poetry run mdview <file>")
@@ -371,26 +372,32 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     # --- Check if a server is already running on this port ---
     server_already_running = False
     try:
-        urllib.request.urlopen(f"http://localhost:{port}/api/health", timeout=1)
+        urllib.request.urlopen(  # pylint: disable=consider-using-with
+            f"http://localhost:{port}/api/health", timeout=1
+        )
         server_already_running = True
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
     if not server_already_running:
         # Spawn a fully-detached background process so the terminal returns
         # immediately after the browser opens.
         env = os.environ.copy()
-        env.setdefault('ALLOWED_DOCUMENTS_DIR', str(drive_root))
+        env.setdefault("ALLOWED_DOCUMENTS_DIR", str(drive_root))
 
         server_cmd = [
-            sys.executable, '-c',
-            f'from markdown_viewer.server import run_flask_app; run_flask_app(port={port}, use_reloader=True)',
+            sys.executable,
+            "-c",
+            (
+                "from markdown_viewer.server import run_flask_app;"
+                f" run_flask_app(port={port}, use_reloader=True)"
+            ),
         ]
 
-        if sys.platform == 'win32':
-            CREATE_NEW_PROCESS_GROUP = 0x00000200
-            CREATE_NO_WINDOW = 0x08000000
-            subprocess.Popen(
+        if sys.platform == "win32":
+            CREATE_NEW_PROCESS_GROUP = 0x00000200  # pylint: disable=invalid-name
+            CREATE_NO_WINDOW = 0x08000000  # pylint: disable=invalid-name
+            subprocess.Popen(  # pylint: disable=consider-using-with
                 server_cmd,
                 creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
                 env=env,
@@ -398,7 +405,7 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
                 stderr=subprocess.DEVNULL,
             )
         else:
-            subprocess.Popen(
+            subprocess.Popen(  # pylint: disable=consider-using-with
                 server_cmd,
                 start_new_session=True,
                 env=env,
@@ -411,10 +418,12 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
         server_ready = False
         for _ in range(40):
             try:
-                urllib.request.urlopen(f"http://localhost:{port}/api/health", timeout=1)
+                urllib.request.urlopen(  # pylint: disable=consider-using-with
+                    f"http://localhost:{port}/api/health", timeout=1
+                )
                 server_ready = True
                 break
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 time.sleep(0.25)
 
         if not server_ready:
@@ -428,145 +437,149 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     # Terminal returns immediately — server keeps running in the background.
 
 
-def render_markdown_file(filepath: Path, output: Optional[Path] = None,
-                         open_browser: bool = True, keep_output: bool = False) -> Path:
+def render_markdown_file(
+    filepath: Path,
+    output: Optional[Path] = None,
+    open_browser: bool = True,
+    keep_output: bool = False,
+) -> Path:
     """
     Render a markdown file to HTML and optionally open in browser.
-    
+
     Args:
         filepath: Path to the markdown file
         output: Optional output path for HTML file
         open_browser: Whether to open the result in browser
         keep_output: Whether to keep the output file (if not specified, uses temp file)
-        
+
     Returns:
         Path to the generated HTML file
     """
     if not filepath.exists():
         raise FileNotFoundError(f"Markdown file not found: {filepath}")
-    
+
     # Read markdown content
-    markdown_content = filepath.read_text(encoding='utf-8')
-    
+    markdown_content = filepath.read_text(encoding="utf-8")
+
     # Process markdown
     processor = MarkdownProcessor()
     html_content = processor.process(markdown_content)
-    
+
     # Generate HTML
     html = HTML_TEMPLATE.format(
         title=filepath.stem,
         content=html_content,
         filename=filepath.name,
-        filename_base=filepath.stem
+        filename_base=filepath.stem,
     )
-    
+
     # Determine output file
     if output:
         output_path = output
     elif keep_output:
-        output_path = filepath.with_suffix('.html')
+        output_path = filepath.with_suffix(".html")
     else:
         # Use temp file
-        fd, temp_path = tempfile.mkstemp(suffix='.html', prefix='mdview-')
+        fd, temp_path = tempfile.mkstemp(suffix=".html", prefix="mdview-")
         os.close(fd)
         output_path = Path(temp_path)
-    
+
     # Ensure absolute path for file URI
     output_path = output_path.resolve()
-    
+
     # Write HTML file
-    output_path.write_text(html, encoding='utf-8')
-    
+    output_path.write_text(html, encoding="utf-8")
+
     # Open in browser
     if open_browser:
         webbrowser.open(output_path.as_uri())
-    
+
     return output_path
 
 
 def export_to_pdf(filepath: Path, output: Optional[Path] = None) -> Path:
     """
     Export markdown file to PDF.
-    
+
     Args:
         filepath: Path to the markdown file
         output: Optional output path for PDF file
-        
+
     Returns:
         Path to the generated PDF file
     """
     try:
-        from .exporters.pdf_exporter import PDFExporter
+        from .exporters.pdf_exporter import PDFExporter  # pylint: disable=import-outside-toplevel
     except ImportError as e:
         raise ImportError(
             "PDF export requires additional dependencies. "
             "Install with: pip install markdown-viewer[export] or poetry install -E export"
         ) from e
-    
+
     # First render to HTML
     html_path = render_markdown_file(filepath, open_browser=False, keep_output=False)
     try:
-        html_content = html_path.read_text(encoding='utf-8')
+        html_content = html_path.read_text(encoding="utf-8")
     finally:
         html_path.unlink(missing_ok=True)
-    
+
     # Determine output path
     if output:
         pdf_path = output
     else:
-        pdf_path = filepath.with_suffix('.pdf')
-    
+        pdf_path = filepath.with_suffix(".pdf")
+
     # Export to PDF
     exporter = PDFExporter()
     exporter.export(html_content, str(pdf_path))
     exporter.close()  # Properly close browser and playwright
-    
+
     return pdf_path
 
 
 def export_to_word(filepath: Path, output: Optional[Path] = None) -> Path:
     """
     Export markdown file to Word document.
-    
+
     Args:
         filepath: Path to the markdown file
         output: Optional output path for Word file
-        
+
     Returns:
         Path to the generated Word file
     """
     try:
-        from .exporters.word_exporter import WordExporter
+        from .exporters.word_exporter import WordExporter  # pylint: disable=import-outside-toplevel
     except ImportError as e:
         raise ImportError(
             "Word export requires additional dependencies. "
             "Install with: pip install markdown-viewer[export] or poetry install -E export"
         ) from e
-    
+
     # Read markdown content
-    markdown_content = filepath.read_text(encoding='utf-8')
-    
+    markdown_content = filepath.read_text(encoding="utf-8")
+
     # Process markdown to HTML for parsing
     processor = MarkdownProcessor()
     html_content = processor.process(markdown_content)
-    
+
     # Determine output path
     if output:
         word_path = output
     else:
-        word_path = filepath.with_suffix('.docx')
-    
+        word_path = filepath.with_suffix(".docx")
+
     # Export to Word
     exporter = WordExporter()
     exporter.export(html_content, markdown_content, str(word_path))
-    
+
     return word_path
 
 
 def share_via_email(filepath: Path, attachment_path: Path, file_type: str) -> None:
     """
     Open email client with attachment.
-    
+
     Args:
         filepath: Original markdown file path
         attachment_path: Path to the attachment (PDF or Word)
@@ -574,31 +587,34 @@ def share_via_email(filepath: Path, attachment_path: Path, file_type: str) -> No
     """
     # Email parameters
     subject = f"Sharing: {filepath.stem}"
-    body = f"Please find attached the {file_type} version of '{filepath.name}'.\n\nGenerated by markdown-viewer."
-    
+    body = (
+        f"Please find attached the {file_type} version of '{filepath.name}'."
+        "\n\nGenerated by markdown-viewer."
+    )
+
     # URL encode parameters
     subject_encoded = urllib.parse.quote(subject)
     body_encoded = urllib.parse.quote(body)
-    
+
     # Construct mailto URL
     # Note: attachment parameter is not universally supported
     # Different email clients handle this differently
     mailto_url = f"mailto:?subject={subject_encoded}&body={body_encoded}"
-    
+
     # Open email client
     webbrowser.open(mailto_url)
-    
+
     # Print instructions
-    print(f"\n📧 Email client opened!")
+    print("\n📧 Email client opened!")
     print(f"📎 Please manually attach: {attachment_path.absolute()}")
-    print(f"\nNote: The attachment couldn't be auto-attached due to email client limitations.")
-    print(f"You can drag and drop the file into your email, or use the attach button.")
+    print("\nNote: The attachment couldn't be auto-attached due to email client limitations.")
+    print("You can drag and drop the file into your email, or use the attach button.")
 
 
-def main():
+def main():  # pylint: disable=too-many-branches,too-many-statements
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description='Markdown Viewer - Render markdown files beautifully in your browser',
+        description="Markdown Viewer - Render markdown files beautifully in your browser",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -621,78 +637,65 @@ Examples:
   # CI/CD usage
   mdview docs/report.md --no-browser --keep
   mdview docs/report.md --export-pdf --export-word
-        """
+        """,
     )
-    
+
+    parser.add_argument("file", nargs="?", type=Path, help="Path to the markdown file to render")
+
     parser.add_argument(
-        'file',
-        nargs='?',
-        type=Path,
-        help='Path to the markdown file to render'
+        "-o", "--output", type=Path, help="Output HTML file path (default: temporary file)"
     )
-    
+
     parser.add_argument(
-        '-o', '--output',
-        type=Path,
-        help='Output HTML file path (default: temporary file)'
+        "--no-browser", action="store_true", help="Do not open the result in browser"
     )
-    
+
     parser.add_argument(
-        '--no-browser',
-        action='store_true',
-        help='Do not open the result in browser'
+        "--keep", action="store_true", help="Keep the output file (saves as <filename>.html)"
     )
-    
+
     parser.add_argument(
-        '--keep',
-        action='store_true',
-        help='Keep the output file (saves as <filename>.html)'
-    )
-    
-    parser.add_argument(
-        '--export-pdf',
-        nargs='?',
+        "--export-pdf",
+        nargs="?",
         const=True,
         type=Path,
-        metavar='OUTPUT',
-        help='Export to PDF (optionally specify output path)'
+        metavar="OUTPUT",
+        help="Export to PDF (optionally specify output path)",
     )
-    
+
     parser.add_argument(
-        '--export-word',
-        nargs='?',
+        "--export-word",
+        nargs="?",
         const=True,
         type=Path,
-        metavar='OUTPUT',
-        help='Export to Word document (optionally specify output path)'
+        metavar="OUTPUT",
+        help="Export to Word document (optionally specify output path)",
     )
-    
+
     parser.add_argument(
-        '--share-pdf',
-        action='store_true',
-        help='Export to PDF and open email client to share'
+        "--share-pdf", action="store_true", help="Export to PDF and open email client to share"
     )
-    
+
     parser.add_argument(
-        '--share-word',
-        action='store_true',
-        help='Export to Word and open email client to share'
+        "--share-word", action="store_true", help="Export to Word and open email client to share"
     )
-    
-    parser.add_argument(
-        '--version',
-        action='version',
-        version='markdown-viewer 1.0.0'
-    )
-    
+
+    parser.add_argument("--version", action="version", version=f"markdown-viewer {__version__}")
+
     args = parser.parse_args()
 
     # If no file provided, show available markdown files and let user pick
     if args.file is None:
         md_files = sorted(
-            [p for p in Path('.').rglob('*.md') if not any(part.startswith('.') for part in p.parts)],
-            key=lambda p: (len(p.parts), str(p))
-        )[:20]  # cap at 20 to avoid flooding
+            [
+                p
+                for p in Path(".").rglob("*.md")
+                if not any(part.startswith(".") for part in p.parts)
+            ],
+            key=lambda p: (len(p.parts), str(p)),
+        )[
+            :20
+        ]  # cap at 20 to avoid flooding
 
         if md_files:
             print("No file specified. Markdown files found:")
@@ -703,7 +706,7 @@ Examples:
             print("Usage: mdview <file.md>  |  Example: mdview README.md")
             return 1
 
-    VALID_EXTENSIONS = ('.md', '.markdown', '.mdown')
+    valid_extensions = (".md", ".markdown", ".mdown")
 
     # Resolve and validate — loop until a valid file is given
     while True:
@@ -713,9 +716,12 @@ Examples:
                 print(f"'{args.file}' is a directory, not a file. Please enter a .md file.")
             elif not args.file.exists():
                 print(f"'{args.file}' does not exist. Please enter another file.")
-            elif args.file.suffix.lower() not in VALID_EXTENSIONS:
+            elif args.file.suffix.lower() not in valid_extensions:
                 ext = args.file.suffix or "(no extension)"
-                print(f"'{args.file.name}' has an unsupported extension ({ext}). Please provide a file with a .md extension.")
+                print(
+                    f"'{args.file.name}' has an unsupported extension ({ext})."
+                    " Please provide a file with a .md extension."
+                )
             else:
                 break  # valid file — exit loop
 
@@ -748,19 +754,19 @@ Examples:
             output_path = args.export_pdf if isinstance(args.export_pdf, Path) else None
             pdf_path = export_to_pdf(args.file, output=output_path)
             print(f"✅ Exported to PDF: {pdf_path}")
-            
+
             if args.share_pdf:
-                share_via_email(args.file, pdf_path, 'PDF')
-        
+                share_via_email(args.file, pdf_path, "PDF")
+
         # Handle export to Word
         if args.export_word or args.share_word:
             output_path = args.export_word if isinstance(args.export_word, Path) else None
             word_path = export_to_word(args.file, output=output_path)
             print(f"✅ Exported to Word: {word_path}")
-            
+
             if args.share_word:
-                share_via_email(args.file, word_path, 'Word')
-        
+                share_via_email(args.file, word_path, "Word")
+
         # Handle HTML rendering (only if not exclusively exporting/sharing)
         if not (args.export_pdf or args.export_word or args.share_pdf or args.share_word):
             if args.no_browser or args.output or args.keep:
@@ -769,7 +775,7 @@ Examples:
                     filepath=args.file,
                     output=args.output,
                     open_browser=not args.no_browser,
-                    keep_output=args.keep
+                    keep_output=args.keep,
                 )
                 if args.no_browser:
                     print(f"✅ Rendered: {output_path}")
@@ -778,21 +784,22 @@ Examples:
             else:
                 # Default: open through the full Flask app — all features available
                 _open_in_flask_app(args.file)
-            
+
         return 0
-        
+
     except ImportError as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         return 1
     except FileNotFoundError as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         return 1
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"❌ Unexpected error: {e}", file=sys.stderr)
-        import traceback
+        import traceback  # pylint: disable=import-outside-toplevel
+
         traceback.print_exc()
         return 2
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

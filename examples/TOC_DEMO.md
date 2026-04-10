@@ -32,7 +32,7 @@ The TOC comes with beautiful styling:
 
 Before installing, ensure you have:
 
-1. Python 3.8 or higher
+1. Python 3.9 or higher
 2. Poetry package manager
 3. A modern web browser
 

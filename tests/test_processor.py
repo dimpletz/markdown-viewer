@@ -14,7 +14,7 @@ def test_basic_markdown(processor):
     """Test basic markdown rendering."""
     markdown = "# Hello World\n\nThis is a test."
     html = processor.process(markdown)
-    
+
     assert "Hello World" in html
     assert "<h1" in html
     assert "<p>This is a test.</p>" in html
@@ -24,7 +24,7 @@ def test_code_block(processor):
     """Test code block rendering."""
     markdown = "```python\nprint('hello')\n```"
     html = processor.process(markdown)
-    
+
     assert "print" in html
     assert "hello" in html
 
@@ -37,7 +37,7 @@ def test_table(processor):
 | Cell 1   | Cell 2   |
 """
     html = processor.process(markdown)
-    
+
     assert "<table>" in html
     assert "<th>Header 1</th>" in html
     assert "<td>Cell 1</td>" in html
@@ -50,7 +50,7 @@ graph TD
     A --> B
 ```"""
     html = processor.process(markdown)
-    
+
     assert 'class="mermaid"' in html
 
 
@@ -58,7 +58,7 @@ def test_math_equation(processor):
     """Test math equation preservation."""
     markdown = "$E = mc^2$"
     html = processor.process(markdown)
-    
+
     # Math should be preserved for KaTeX to render
     assert "$E = mc^2$" in html or "E = mc^2" in html
 

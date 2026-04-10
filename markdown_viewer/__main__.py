@@ -2,7 +2,6 @@
 Main entry point for the markdown-viewer application.
 """
 
-import sys
 import os
 import subprocess
 import webbrowser
@@ -21,34 +20,36 @@ def check_electron():
 def start_electron():
     """Start the Electron application."""
     electron_path = Path(__file__).parent / "electron"
-    
+
     # Check if node_modules exists
     node_modules = electron_path / "node_modules"
     if not node_modules.exists():
         print("Installing Electron dependencies...")
         try:
             subprocess.run(["npm", "install"], cwd=electron_path, check=True)
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
             raise RuntimeError(
-                "npm not found. Please install Node.js from https://nodejs.org/ and ensure it is on your PATH."
-            )
+                "npm not found. Please install Node.js from https://nodejs.org/"
+                " and ensure it is on your PATH."
+            ) from exc
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"npm install failed with exit code {e.returncode}.") from e
-    
+
     # Start Electron
     print("Starting Markdown Viewer...")
     try:
-        subprocess.Popen(["npm", "start"], cwd=electron_path)
-    except FileNotFoundError:
+        subprocess.Popen(["npm", "start"], cwd=electron_path)  # pylint: disable=consider-using-with
+    except FileNotFoundError as exc:
         raise RuntimeError(
-            "npm not found. Please install Node.js from https://nodejs.org/ and ensure it is on your PATH."
-        )
+            "npm not found. Please install Node.js from https://nodejs.org/"
+            " and ensure it is on your PATH."
+        ) from exc
 
 
 def main():
     """Main entry point."""
-    import argparse
-    
+    import argparse  # pylint: disable=import-outside-toplevel
+
     parser = argparse.ArgumentParser(
         description="Markdown Viewer - Advanced markdown viewer with export and translation"
     )
@@ -73,33 +74,32 @@ def main():
         action="store_true",
         help="Open in web browser instead of Electron",
     )
-    
+
     args = parser.parse_args()
 
     # Allow access to the full filesystem root for local CLI use (server is localhost-only)
-    from pathlib import Path as _Path
-    import os as _os
-    _os.environ.setdefault('ALLOWED_DOCUMENTS_DIR', str(_Path(_Path.home().anchor)))
+    os.environ.setdefault("ALLOWED_DOCUMENTS_DIR", str(Path(Path.home().anchor)))
 
     # Start the Flask backend server
     print(f"Starting backend server on port {args.port}...")
     server_process = start_server(port=args.port, debug=False)
-    
+
     # Wait for server to be ready with a health-check poll instead of fixed sleep
     backend_url = f"http://localhost:{args.port}/api/health"
-    import urllib.request
+    import urllib.request  # pylint: disable=import-outside-toplevel
+
     for _ in range(20):
         try:
-            urllib.request.urlopen(backend_url, timeout=1)
+            urllib.request.urlopen(backend_url, timeout=1)  # pylint: disable=consider-using-with
             break
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             time.sleep(0.25)
-    
+
     if args.no_gui:
         print(f"Server running at http://localhost:{args.port}")
         print("Press Ctrl+C to stop")
         try:
-            server_process.wait()
+            server_process.join()
         except KeyboardInterrupt:
             print("\nShutting down...")
             server_process.terminate()

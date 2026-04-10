@@ -16,12 +16,12 @@ def file_handler():
 @pytest.fixture
 def temp_markdown_file():
     """Create a temporary markdown file."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write("# Test\n\nThis is a test.")
         temp_path = f.name
-    
+
     yield temp_path
-    
+
     if os.path.exists(temp_path):
         os.unlink(temp_path)
 
@@ -44,11 +44,11 @@ def test_is_markdown_file(file_handler):
 def test_get_file_info(file_handler, temp_markdown_file):
     """Test getting file information."""
     info = file_handler.get_file_info(temp_markdown_file)
-    
+
     assert info is not None
-    assert info['name'] == os.path.basename(temp_markdown_file)
-    assert info['is_markdown'] is True
-    assert info['size'] > 0
+    assert info["name"] == os.path.basename(temp_markdown_file)
+    assert info["is_markdown"] is True
+    assert info["size"] > 0
 
 
 def test_file_not_found(file_handler):

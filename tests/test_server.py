@@ -76,6 +76,3 @@ def test_server_handle_is_alive_delegates():
     mock_thread.is_alive.return_value = True
     handle = _ServerHandle(mock_thread)
     assert handle.is_alive() is True
-
-
-

@@ -4,7 +4,7 @@
 
 **View, export, and translate markdown files — straight from the terminal**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/) [![PyPI](https://img.shields.io/badge/PyPI-markdown--viewer--app-orange)](https://pypi.org/project/markdown-viewer-app/) [![Security](https://img.shields.io/badge/Security-Hardened-green)](SECURITY.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org/) [![PyPI](https://img.shields.io/badge/PyPI-markdown--viewer--app-orange)](https://pypi.org/project/markdown-viewer-app/) [![Security](https://img.shields.io/badge/Security-Hardened-green)](SECURITY.md)
 
 </div>
 
