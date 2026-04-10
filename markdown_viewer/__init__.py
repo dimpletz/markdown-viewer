@@ -2,7 +2,7 @@
 Markdown Viewer - Beautiful markdown renderer with GitHub emoji, Mermaid diagrams, and KaTeX math.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 __author__ = "Ofelia B Webb"
 __email__ = "ofelia.b.webb@gmail.com"
 
