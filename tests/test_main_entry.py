@@ -1,7 +1,6 @@
 """Tests for __main__.py (application entry point)."""
 
-import pytest
-from pathlib import Path
+# pylint: disable=import-outside-toplevel
 from unittest.mock import patch, MagicMock
 
 
@@ -55,9 +54,11 @@ def test_start_electron_installs_if_no_node_modules(tmp_path):
     electron_dir = tmp_path / "electron"
     electron_dir.mkdir()
 
-    with patch("markdown_viewer.__main__.__file__", str(tmp_path / "__main__.py")), patch(
-        "subprocess.run"
-    ) as mock_run, patch("subprocess.Popen"):
+    with (
+        patch("markdown_viewer.__main__.__file__", str(tmp_path / "__main__.py")),
+        patch("subprocess.run") as mock_run,
+        patch("subprocess.Popen"),
+    ):
         from markdown_viewer.__main__ import start_electron
 
         start_electron()
@@ -72,10 +73,12 @@ def test_main_no_gui_mode():
     mock_process = MagicMock()
     mock_process.join.side_effect = KeyboardInterrupt
 
-    with patch("sys.argv", ["markdown_viewer"]), patch(
-        "markdown_viewer.__main__.start_server", return_value=mock_process
-    ), patch("urllib.request.urlopen"), patch("markdown_viewer.__main__.time.sleep"), patch(
-        "sys.argv", ["markdown_viewer", "--no-gui"]
+    with (
+        patch("sys.argv", ["markdown_viewer"]),
+        patch("markdown_viewer.__main__.start_server", return_value=mock_process),
+        patch("urllib.request.urlopen"),
+        patch("markdown_viewer.__main__.time.sleep"),
+        patch("sys.argv", ["markdown_viewer", "--no-gui"]),
     ):
 
         from markdown_viewer.__main__ import main
@@ -90,11 +93,13 @@ def test_main_browser_mode():
     mock_process = MagicMock()
     mock_process.join.side_effect = KeyboardInterrupt
 
-    with patch("sys.argv", ["markdown_viewer", "--browser"]), patch(
-        "markdown_viewer.__main__.start_server", return_value=mock_process
-    ), patch("urllib.request.urlopen"), patch("markdown_viewer.__main__.time.sleep"), patch(
-        "webbrowser.open"
-    ) as mock_browser:
+    with (
+        patch("sys.argv", ["markdown_viewer", "--browser"]),
+        patch("markdown_viewer.__main__.start_server", return_value=mock_process),
+        patch("urllib.request.urlopen"),
+        patch("markdown_viewer.__main__.time.sleep"),
+        patch("webbrowser.open") as mock_browser,
+    ):
 
         from markdown_viewer.__main__ import main
 
@@ -109,13 +114,14 @@ def test_main_electron_not_found_falls_back_to_browser():
     mock_process = MagicMock()
     mock_process.join.side_effect = KeyboardInterrupt
 
-    with patch("sys.argv", ["markdown_viewer"]), patch(
-        "markdown_viewer.__main__.start_server", return_value=mock_process
-    ), patch("urllib.request.urlopen"), patch("markdown_viewer.__main__.time.sleep"), patch(
-        "markdown_viewer.__main__.check_electron", return_value=False
-    ), patch(
-        "webbrowser.open"
-    ) as mock_browser:
+    with (
+        patch("sys.argv", ["markdown_viewer"]),
+        patch("markdown_viewer.__main__.start_server", return_value=mock_process),
+        patch("urllib.request.urlopen"),
+        patch("markdown_viewer.__main__.time.sleep"),
+        patch("markdown_viewer.__main__.check_electron", return_value=False),
+        patch("webbrowser.open") as mock_browser,
+    ):
 
         from markdown_viewer.__main__ import main
 
@@ -129,15 +135,15 @@ def test_main_electron_start_error_falls_back():
     mock_process = MagicMock()
     mock_process.join.side_effect = [None, KeyboardInterrupt]  # 2nd join = shutdown
 
-    with patch("sys.argv", ["markdown_viewer"]), patch(
-        "markdown_viewer.__main__.start_server", return_value=mock_process
-    ), patch("urllib.request.urlopen"), patch("markdown_viewer.__main__.time.sleep"), patch(
-        "markdown_viewer.__main__.check_electron", return_value=True
-    ), patch(
-        "markdown_viewer.__main__.start_electron", side_effect=RuntimeError("no npm")
-    ), patch(
-        "webbrowser.open"
-    ) as mock_browser:
+    with (
+        patch("sys.argv", ["markdown_viewer"]),
+        patch("markdown_viewer.__main__.start_server", return_value=mock_process),
+        patch("urllib.request.urlopen"),
+        patch("markdown_viewer.__main__.time.sleep"),
+        patch("markdown_viewer.__main__.check_electron", return_value=True),
+        patch("markdown_viewer.__main__.start_electron", side_effect=RuntimeError("no npm")),
+        patch("webbrowser.open") as mock_browser,
+    ):
 
         from markdown_viewer.__main__ import main
 

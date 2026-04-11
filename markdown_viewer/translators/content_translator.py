@@ -1,15 +1,17 @@
 """
-Content translator using deep-translator library.
+Content translator using the MyMemory translation API directly.
 """
 
 # pylint: disable=broad-exception-caught
 
+import json
 import re
 import logging
+import socket
+import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-
-from deep_translator import MyMemoryTranslator
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,70 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 2
 RETRY_DELAY = 0  # seconds — don't sleep between retries; fail fast
 TRANSLATE_CHUNK_TIMEOUT = 10  # seconds per individual chunk call
+
+# MyMemory free tier: maximum characters per API request
+_MYMEMORY_MAX_CHARS = 500
+
+
+def _mymemory_request(text: str, source_locale: str, target_locale: str) -> str:
+    """Send a single request to the MyMemory free translation API.
+
+    Args:
+        text: Text to translate (≤ 500 chars for the free tier).
+        source_locale: MyMemory locale string, e.g. ``en-GB`` or ``autodetect``.
+        target_locale: MyMemory locale string, e.g. ``es-ES``.
+
+    Returns:
+        Translated text, or *text* unchanged on API error.
+
+    Raises:
+        TimeoutError: If the HTTP request exceeds TRANSLATE_CHUNK_TIMEOUT seconds.
+    """
+    params = urllib.parse.urlencode({"q": text, "langpair": f"{source_locale}|{target_locale}"})
+    url = f"https://api.mymemory.translated.net/get?{params}"  # nosec — host is a constant
+    try:
+        with urllib.request.urlopen(url, timeout=TRANSLATE_CHUNK_TIMEOUT) as resp:  # nosec
+            data = json.loads(resp.read())
+    except socket.timeout as exc:
+        raise TimeoutError(
+            f"MyMemory API timed out after {TRANSLATE_CHUNK_TIMEOUT}s"
+        ) from exc
+    if data.get("responseStatus") == 200:
+        return data["responseData"].get("translatedText") or text
+    return text
+
+
+def _mymemory_translate(text: str, source_locale: str, target_locale: str) -> str:
+    """Translate *text* via the MyMemory API, respecting the 500-char free-tier limit.
+
+    Longer text is split at sentence/line boundaries; each piece is translated
+    separately and the results are rejoined with a single space.
+    """
+    if not text.strip():
+        return text
+    if len(text) <= _MYMEMORY_MAX_CHARS:
+        return _mymemory_request(text, source_locale, target_locale)
+
+    # Split at sentence/newline boundaries and merge into ≤ 500-char batches
+    sentences = re.split(r"(?<=[.!?\n])\s+", text)
+    parts: List[str] = []
+    current = ""
+    for sentence in sentences:
+        if len(current) + len(sentence) + (1 if current else 0) <= _MYMEMORY_MAX_CHARS:
+            current = (current + " " + sentence).strip() if current else sentence
+        else:
+            if current:
+                parts.append(current)
+            # A single sentence longer than the limit: hard-split it
+            if len(sentence) > _MYMEMORY_MAX_CHARS:
+                for k in range(0, len(sentence), _MYMEMORY_MAX_CHARS):
+                    parts.append(sentence[k : k + _MYMEMORY_MAX_CHARS])
+                current = ""
+            else:
+                current = sentence
+    if current:
+        parts.append(current)
+    return " ".join(_mymemory_request(p, source_locale, target_locale) for p in parts)
 
 
 class ContentTranslator:
@@ -45,9 +111,6 @@ class ContentTranslator:
 
     def __init__(self):
         """Initialize translator."""
-        self.translator_cache: dict = {}
-
-    _MAX_CACHE_SIZE = 20  # Prevent unbounded memory growth
 
     def _to_locale(self, code: str) -> str:
         """Convert a short language code to a MyMemory locale code."""
@@ -78,20 +141,6 @@ class ContentTranslator:
                 f"Supported languages: {', '.join(list(supported.keys())[:10])}..."
             )
 
-        # Get or create translator
-        translator_key = f"{source_lang}_{target_lang}"
-
-        if translator_key not in self.translator_cache:
-            try:
-                # Evict oldest entry when cache is full
-                if len(self.translator_cache) >= self._MAX_CACHE_SIZE:
-                    self.translator_cache.pop(next(iter(self.translator_cache)))
-                self.translator_cache[translator_key] = True  # mark as validated
-                logger.debug("Validated translator key %s", translator_key)
-            except Exception as e:
-                logger.error("Failed to validate translator: %s", e)
-                raise ValueError(f"Failed to initialize translator: {e}") from e
-
         # Split content into translatable chunks
         chunks = self._split_content(content)
 
@@ -101,17 +150,13 @@ class ContentTranslator:
                 return i, chunk["text"]
             for attempt in range(MAX_RETRIES):
                 try:
-                    # Each call gets its own short-lived translator instance to avoid
-                    # shared-state issues when called from multiple threads simultaneously.
-                    t = MyMemoryTranslator(
-                        source=self._to_locale(source_lang), target=self._to_locale(target_lang)
+                    result = _mymemory_translate(
+                        chunk["text"],
+                        self._to_locale(source_lang),
+                        self._to_locale(target_lang),
                     )
-                    with ThreadPoolExecutor(max_workers=1) as ex:
-                        future = ex.submit(t.translate, chunk["text"])
-                        result = future.result(timeout=TRANSLATE_CHUNK_TIMEOUT)
-                    # deep-translator can return None on silent failure; fall back to original
-                    return i, result if isinstance(result, str) else chunk["text"]
-                except FuturesTimeout as exc:
+                    return i, result
+                except TimeoutError as exc:
                     logger.error(
                         "Translation chunk %s timed out after %ss", i + 1, TRANSLATE_CHUNK_TIMEOUT
                     )

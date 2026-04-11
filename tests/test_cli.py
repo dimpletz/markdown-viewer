@@ -1,8 +1,8 @@
 """Tests for CLI functions (cli.py)."""
 
-import pytest
+# pylint: disable=import-outside-toplevel
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # ---------------------------------------------------------------------------
 # render_markdown_file
@@ -52,12 +52,13 @@ def test_export_to_pdf_with_mock(tmp_path):
     md_file.write_text("# PDF Test", encoding="utf-8")
     out_path = tmp_path / "doc.pdf"
 
-    def fake_export(html, path):
+    def fake_export(_html, path):
         Path(path).write_bytes(b"%PDF-1.4")
 
-    with patch(
-        "markdown_viewer.exporters.pdf_exporter.PDFExporter.export", side_effect=fake_export
-    ), patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.close"):
+    with (
+        patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.export", side_effect=fake_export),
+        patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.close"),
+    ):
         from markdown_viewer.cli import export_to_pdf
 
         result = export_to_pdf(md_file, output=out_path)
@@ -71,12 +72,13 @@ def test_export_to_pdf_default_output(tmp_path):
     md_file = tmp_path / "report.md"
     md_file.write_text("# Report", encoding="utf-8")
 
-    def fake_export(html, path):
+    def fake_export(_html, path):
         Path(path).write_bytes(b"%PDF-1.4")
 
-    with patch(
-        "markdown_viewer.exporters.pdf_exporter.PDFExporter.export", side_effect=fake_export
-    ), patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.close"):
+    with (
+        patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.export", side_effect=fake_export),
+        patch("markdown_viewer.exporters.pdf_exporter.PDFExporter.close"),
+    ):
         from markdown_viewer.cli import export_to_pdf
 
         result = export_to_pdf(md_file)
@@ -141,9 +143,10 @@ def test_main_no_browser(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     html_file = tmp_path / "result.html"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--no-browser"]), patch(
-        "markdown_viewer.cli.render_markdown_file", return_value=html_file
-    ) as mock_r:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--no-browser"]),
+        patch("markdown_viewer.cli.render_markdown_file", return_value=html_file) as mock_r,
+    ):
         from markdown_viewer.cli import main
 
         result = main()
@@ -158,9 +161,10 @@ def test_main_keep_output(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     html_file = tmp_path / "test.html"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--keep", "--no-browser"]), patch(
-        "markdown_viewer.cli.render_markdown_file", return_value=html_file
-    ) as mock_r:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--keep", "--no-browser"]),
+        patch("markdown_viewer.cli.render_markdown_file", return_value=html_file) as mock_r,
+    ):
         from markdown_viewer.cli import main
 
         main()
@@ -175,9 +179,10 @@ def test_main_export_word(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     docx_file = tmp_path / "test.docx"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--export-word"]), patch(
-        "markdown_viewer.cli.export_to_word", return_value=docx_file
-    ) as mock_e:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--export-word"]),
+        patch("markdown_viewer.cli.export_to_word", return_value=docx_file) as mock_e,
+    ):
         from markdown_viewer.cli import main
 
         result = main()
@@ -192,9 +197,10 @@ def test_main_export_pdf(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     pdf_file = tmp_path / "test.pdf"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--export-pdf"]), patch(
-        "markdown_viewer.cli.export_to_pdf", return_value=pdf_file
-    ) as mock_e:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--export-pdf"]),
+        patch("markdown_viewer.cli.export_to_pdf", return_value=pdf_file) as mock_e,
+    ):
         from markdown_viewer.cli import main
 
         result = main()
@@ -209,9 +215,11 @@ def test_main_share_pdf(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     pdf_file = tmp_path / "test.pdf"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--share-pdf"]), patch(
-        "markdown_viewer.cli.export_to_pdf", return_value=pdf_file
-    ), patch("markdown_viewer.cli.share_via_email") as mock_share:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--share-pdf"]),
+        patch("markdown_viewer.cli.export_to_pdf", return_value=pdf_file),
+        patch("markdown_viewer.cli.share_via_email") as mock_share,
+    ):
         from markdown_viewer.cli import main
 
         result = main()
@@ -226,9 +234,11 @@ def test_main_share_word(tmp_path):
     md_file.write_text("# Test", encoding="utf-8")
     docx_file = tmp_path / "test.docx"
 
-    with patch("sys.argv", ["mdview", str(md_file), "--share-word"]), patch(
-        "markdown_viewer.cli.export_to_word", return_value=docx_file
-    ), patch("markdown_viewer.cli.share_via_email") as mock_share:
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--share-word"]),
+        patch("markdown_viewer.cli.export_to_word", return_value=docx_file),
+        patch("markdown_viewer.cli.share_via_email") as mock_share,
+    ):
         from markdown_viewer.cli import main
 
         result = main()
@@ -241,8 +251,10 @@ def test_main_file_not_found(tmp_path):
     """main() prompts for another file when target doesn't exist; returns 0 when user cancels."""
     nonexistent = tmp_path / "ghost.md"
 
-    with patch("sys.argv", ["mdview", str(nonexistent), "--no-browser"]), patch(
-        "builtins.input", side_effect=EOFError
+    with (
+        patch("sys.argv", ["mdview", str(nonexistent), "--no-browser"]),
+        patch("sys.stdin.isatty", return_value=True),
+        patch("builtins.input", side_effect=EOFError),
     ):
         from markdown_viewer.cli import main
 
@@ -256,8 +268,9 @@ def test_main_unexpected_error_returns_2(tmp_path):
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
 
-    with patch("sys.argv", ["mdview", str(md_file), "--no-browser"]), patch(
-        "markdown_viewer.cli.render_markdown_file", side_effect=RuntimeError("boom")
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--no-browser"]),
+        patch("markdown_viewer.cli.render_markdown_file", side_effect=RuntimeError("boom")),
     ):
         from markdown_viewer.cli import main
 
@@ -271,12 +284,14 @@ def test_main_opens_browser_by_default(tmp_path):
     md_file = tmp_path / "test.md"
     md_file.write_text("# Test", encoding="utf-8")
 
-    with patch("sys.argv", ["mdview", str(md_file)]), patch(
-        "markdown_viewer.cli._open_in_flask_app"
-    ) as mock_flask:
+    with (
+        patch("sys.argv", ["mdview", str(md_file)]),
+        patch("markdown_viewer.cli._open_in_flask_app") as mock_flask,
+        patch("sys.stdout.isatty", return_value=True),
+    ):
         from markdown_viewer.cli import main
 
         result = main()
 
     assert result == 0
-    mock_flask.assert_called_once_with(md_file)
+    mock_flask.assert_called_once_with(md_file, port=5000)

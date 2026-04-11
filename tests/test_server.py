@@ -1,7 +1,6 @@
 """Tests for server.py (Flask server management)."""
 
 import threading
-import pytest
 from unittest.mock import patch, MagicMock
 
 from markdown_viewer.server import _ServerHandle, start_server, run_flask_app

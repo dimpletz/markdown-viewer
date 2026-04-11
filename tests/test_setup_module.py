@@ -1,8 +1,7 @@
 """Tests for the first-time setup module (markdown_viewer/setup.py)."""
 
+# pylint: disable=import-outside-toplevel
 import subprocess
-import sys
-import pytest
 from unittest.mock import patch, MagicMock
 
 
@@ -115,8 +114,9 @@ def test_main_python_too_old(capsys):
     fake_version.major = 2
     fake_version.minor = 7
     fake_version.micro = 18
-    with patch("markdown_viewer.setup.run_command", return_value=True), patch(
-        "markdown_viewer.setup.sys.version_info", fake_version
+    with (
+        patch("markdown_viewer.setup.run_command", return_value=True),
+        patch("markdown_viewer.setup.sys.version_info", fake_version),
     ):
         result = main()
 
@@ -135,8 +135,9 @@ def test_main_electron_dir_found_npm_succeeds(capsys, tmp_path):
     electron_dir.mkdir(parents=True)
 
     # Point setup module's __file__ to tmp_path so the path resolves correctly
-    with patch.object(setup_module, "__file__", str(tmp_path / "setup.py")), patch(
-        "markdown_viewer.setup.run_command", return_value=True
+    with (
+        patch.object(setup_module, "__file__", str(tmp_path / "setup.py")),
+        patch("markdown_viewer.setup.run_command", return_value=True),
     ):
         result = main()
 
@@ -157,8 +158,9 @@ def test_main_import_error(capsys):
             raise ImportError("mocked import failure")
         return original_import(name, *args, **kwargs)
 
-    with patch("markdown_viewer.setup.run_command", return_value=True), patch(
-        "builtins.__import__", side_effect=mock_import
+    with (
+        patch("markdown_viewer.setup.run_command", return_value=True),
+        patch("builtins.__import__", side_effect=mock_import),
     ):
         result = main()
 

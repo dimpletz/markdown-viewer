@@ -1,6 +1,8 @@
 """Tests for markdown processor."""
 
+# pylint: disable=redefined-outer-name
 import pytest
+
 from markdown_viewer.processors.markdown_processor import MarkdownProcessor
 
 

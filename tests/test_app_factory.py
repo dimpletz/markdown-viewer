@@ -1,8 +1,9 @@
 """Tests for the app factory (create_app) and CLI render function."""
 
+# pylint: disable=import-outside-toplevel
 import os
+
 import pytest
-from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # App factory

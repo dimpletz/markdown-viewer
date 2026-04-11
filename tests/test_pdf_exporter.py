@@ -1,8 +1,7 @@
 """Tests for PDFExporter with mocked Playwright."""
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+# pylint: disable=import-outside-toplevel,protected-access
+from unittest.mock import patch, MagicMock
 
 
 def test_close_when_not_initialized():

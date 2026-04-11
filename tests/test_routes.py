@@ -1,8 +1,10 @@
 """Tests for Flask API routes."""
 
-import pytest
-import os
+# pylint: disable=import-outside-toplevel,redefined-outer-name
 from unittest.mock import patch, MagicMock
+
+import pytest
+
 from markdown_viewer.app import create_app
 
 
@@ -169,7 +171,7 @@ def test_export_pdf_success(client):
     """POST /api/export/pdf returns PDF bytes with mocked exporter."""
     from pathlib import Path as _Path
 
-    def fake_export(html, path, options=None):
+    def fake_export(_html, path, _options=None):
         _Path(path).write_bytes(b"%PDF-1.4 dummy")
 
     with patch("markdown_viewer.routes.PDFExporter") as mock_cls:
@@ -210,7 +212,7 @@ def test_export_word_success(client):
     """POST /api/export/word returns docx bytes with mocked exporter."""
     from pathlib import Path as _Path
 
-    def fake_export(html, markdown, path):
+    def fake_export(_html, _markdown, path):
         _Path(path).write_bytes(b"PK dummy docx")
 
     with patch("markdown_viewer.routes.WordExporter") as mock_cls:
@@ -333,8 +335,6 @@ def test_test_page_not_found(client):
 
 def test_check_disk_space_oserror(app):
     """check_disk_space() returns True when shutil.disk_usage raises OSError."""
-    import shutil
-
     with app.app_context():
         with patch("shutil.disk_usage", side_effect=OSError("no space info")):
             from markdown_viewer.routes import check_disk_space

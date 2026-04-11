@@ -1,8 +1,11 @@
 """Tests for exporters."""
 
-import pytest
+# pylint: disable=redefined-outer-name
 import os
 import tempfile
+
+import pytest
+
 from markdown_viewer.exporters.pdf_exporter import PDFExporter
 from markdown_viewer.exporters.word_exporter import WordExporter
 

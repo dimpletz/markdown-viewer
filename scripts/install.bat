@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM Windows batch script to install Markdown Viewer
 
 echo ============================================================

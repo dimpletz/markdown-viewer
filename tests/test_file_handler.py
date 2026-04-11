@@ -1,9 +1,12 @@
 """Tests for file handler."""
 
-import pytest
-import tempfile
+# pylint: disable=redefined-outer-name
 import os
+import tempfile
 from pathlib import Path
+
+import pytest
+
 from markdown_viewer.utils.file_handler import FileHandler
 
 

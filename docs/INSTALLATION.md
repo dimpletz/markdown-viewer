@@ -65,19 +65,19 @@ cd ../..
 
 ```bash
 # Option 1: Using poetry
-poetry run markdown-viewer
+poetry run mdview README.md
 
 # Option 2: Activate virtual environment
 poetry shell
-markdown-viewer
+mdview README.md
 ```
 
 ### Method 2: Using pip
 
-#### Step 1: Install from PyPI (when published)
+#### Step 1: Install from PyPI
 
 ```bash
-pip install markdown-viewer
+pip install markdown-viewer-app
 ```
 
 #### Step 2: Install from Source
@@ -110,9 +110,7 @@ cd ../..
 #### Step 4: Run
 
 ```bash
-markdown-viewer
-# or
-mdviewer
+mdview README.md
 ```
 
 ### Method 3: Standalone Executable (Coming Soon)
@@ -130,19 +128,13 @@ After installation, verify everything works:
 
 ```bash
 # Check if command is available
-markdown-viewer --help
+mdview --help
 
-# Test backend server only
-markdown-viewer --no-gui
+# Render a file in browser
+mdview README.md
 
-# Open in browser mode
-markdown-viewer --browser
-```
-
-You should see output like:
-```
-Starting backend server on port 5000...
-Starting Markdown Viewer...
+# Render without opening browser (CI/CD mode)
+mdview README.md --no-browser --keep
 ```
 
 ## Troubleshooting

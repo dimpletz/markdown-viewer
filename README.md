@@ -43,6 +43,12 @@ mdview README.md --no-browser
 
 # Save HTML to a specific file
 mdview README.md -o output.html
+
+# Use a custom port (default is 5000)
+mdview README.md -p 5001
+
+# Stop the background server on a custom port
+mdview --stop -p 5001
 ```
 
 When you run `mdview <file>`, the app:
@@ -50,7 +56,76 @@ When you run `mdview <file>`, the app:
 2. Opens your browser directly to the rendered file
 3. Returns you to the terminal immediately
 
-The server keeps running in the background. Subsequent `mdview` calls reuse it instantly.
+The server keeps running in the background. Subsequent `mdview` calls reuse it instantly. Use `-p`/`--port` to run multiple servers on different ports simultaneously.
+
+---
+
+## 🖥️ CLI Reference
+
+```
+mdview [file] [options]
+```
+
+### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `file` | Path to the markdown file to render (optional — prompts interactively if omitted in a terminal) |
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o`, `--output <path>` | *(temp file)* | Save rendered HTML to this path instead of a temporary file |
+| `--no-browser` | off | Render without opening a browser window |
+| `--keep` | off | Keep the HTML output file after rendering (saved as `<filename>.html` next to the source) |
+| `--export-pdf [path]` | — | Export to PDF; optionally specify an output path |
+| `--export-word [path]` | — | Export to Word (`.docx`); optionally specify an output path |
+| `--share-pdf` | — | Export to PDF and open your email client with it attached |
+| `--share-word` | — | Export to Word and open your email client with it attached |
+| `-p`, `--port <port>` | `5000` | Port for the background Flask server |
+| `--stop` | — | Stop the background server and release the port |
+| `--version` | — | Print the installed version and exit |
+
+### Examples
+
+```bash
+# --- Viewing ---
+mdview README.md                        # Open in browser (default)
+mdview README.md --no-browser           # Render without opening browser
+mdview README.md --no-browser --keep    # Render and save README.html next to the source
+
+# --- HTML output ---
+mdview README.md -o docs/out.html           # Save rendered HTML to a specific path
+mdview README.md --no-browser -o out.html   # Save HTML, no browser
+
+# --- PDF export ---
+mdview README.md --export-pdf               # Export to README.pdf (same directory)
+mdview README.md --export-pdf ~/docs/out.pdf  # Export to a specific path
+
+# --- Word export ---
+mdview README.md --export-word              # Export to README.docx
+mdview README.md --export-word ~/docs/out.docx
+
+# --- Export both at once ---
+mdview README.md --export-pdf --export-word
+
+# --- Email sharing ---
+mdview README.md --share-pdf   # Export PDF and open email client
+mdview README.md --share-word  # Export Word and open email client
+
+# --- Server / port management ---
+mdview README.md -p 5001       # Open using a custom port
+mdview --stop                  # Stop the default server (port 5000)
+mdview --stop -p 5001          # Stop a server on a custom port
+
+# --- CI/CD (non-interactive) ---
+# When stdout is not a TTY, browser and server are skipped automatically
+mdview README.md -o output.html
+
+# --- Version ---
+mdview --version
+```
 
 ---
 
@@ -196,7 +271,7 @@ poetry run playwright install chromium
 poetry run mdview README.md
 
 # Or start the server standalone
-poetry run markdown-viewer --browser
+poetry run mdview README.md --no-browser
 ```
 
 ### Tests
@@ -277,4 +352,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 - **[KaTeX](https://katex.org/)** — Math typesetting
 - **[Pygments](https://pygments.org/)** — Syntax highlighting
 - **[DOMPurify](https://github.com/cure53/DOMPurify)** — XSS sanitization
-- **[deep-translator](https://github.com/nidhaloff/deep-translator)** — Translation via [MyMemory API](https://mymemory.translated.net/)
+- **[MyMemory](https://mymemory.translated.net/)** — Free translation API (called directly via stdlib `urllib`)

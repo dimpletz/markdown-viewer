@@ -7,7 +7,7 @@ Beautiful markdown renderer with GitHub emoji support, Mermaid diagrams, KaTeX m
 ### From PyPI (Recommended)
 
 ```bash
-pip install markdown-viewer
+pip install markdown-viewer-app
 ```
 
 ### From Source
@@ -66,8 +66,8 @@ jobs:
         with:
           python-version: '3.11'
       
-      - name: Install markdown-viewer
-        run: pip install markdown-viewer
+      - name: Install markdown-viewer-app
+        run: pip install markdown-viewer-app
       
       - name: Generate HTML
         run: mdview README.md -o docs/index.html --no-browser
@@ -110,10 +110,7 @@ For the full desktop application with export (PDF/Word) and translation features
 
 ```bash
 # Install with full dependencies
-pip install markdown-viewer[full]
-
-# Run the full app
-markdown-viewer
+pip install markdown-viewer-app
 ```
 
 ## Development

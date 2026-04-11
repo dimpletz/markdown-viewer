@@ -7,6 +7,7 @@ API routes for markdown processing, export, and translation.
 import os
 import tempfile
 import logging
+import threading
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
@@ -174,6 +175,20 @@ def _check_playwright_available() -> bool:
             return os.path.exists(executable)
     except Exception:
         return False
+
+
+@api_bp.route("/shutdown", methods=["GET"])
+def shutdown_server() -> Tuple[Dict[str, Any], int]:
+    """Shut down the server process. Only reachable from localhost (127.0.0.1 binding)."""
+
+    def _exit_after_response() -> None:
+        import time  # pylint: disable=import-outside-toplevel
+
+        time.sleep(0.4)  # Let the HTTP response flush before exiting
+        os._exit(0)  # pylint: disable=protected-access
+
+    threading.Thread(target=_exit_after_response, daemon=True).start()
+    return jsonify({"success": True, "message": "Server shutting down"}), 200
 
 
 @api_bp.route("/csrf", methods=["GET"])

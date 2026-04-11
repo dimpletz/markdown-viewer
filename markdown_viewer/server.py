@@ -2,16 +2,33 @@
 Server management for the markdown viewer backend.
 """
 
+import os
+import atexit
+import pathlib
+import tempfile
 import threading
 import logging
 
 logger = logging.getLogger(__name__)
 
 
+def pid_file_path(port: int) -> pathlib.Path:
+    """Return the path to the PID file for the given port."""
+    return pathlib.Path(tempfile.gettempdir()) / f"mdview-{port}.pid"
+
+
 def run_flask_app(  # pylint: disable=unused-argument
     port: int = 5000, debug: bool = False, use_reloader: bool = False
 ) -> None:
     """Run the Flask application (called in a background thread or detached process)."""
+    # Write PID file so `mdview --stop` can kill this process.
+    pid_file = pid_file_path(port)
+    try:
+        pid_file.write_text(str(os.getpid()), encoding="utf-8")
+        atexit.register(lambda: pid_file.unlink(missing_ok=True))
+    except OSError:
+        pass
+
     from .app import create_app  # pylint: disable=import-outside-toplevel
 
     app = create_app()

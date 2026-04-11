@@ -4,13 +4,14 @@ Render markdown files and open them in browser.
 Export to PDF/Word and share via email.
 """
 
+import os
+import subprocess
 import sys
 import argparse
 import webbrowser
 import tempfile
 from pathlib import Path
 from typing import Optional
-import os
 import urllib.parse
 
 from markdown_viewer import __version__
@@ -196,27 +197,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             color: #0550ae;
             text-decoration: underline;
         }}
-        
-        /* Permalink anchors */
-        .markdown-body .headerlink {{
-            color: #d0d7de;
-            text-decoration: none;
-            margin-left: 8px;
-            font-size: 0.9em;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }}
-        .markdown-body h1:hover .headerlink,
-        .markdown-body h2:hover .headerlink,
-        .markdown-body h3:hover .headerlink,
-        .markdown-body h4:hover .headerlink,
-        .markdown-body h5:hover .headerlink,
-        .markdown-body h6:hover .headerlink {{
-            opacity: 1;
-        }}
-        .markdown-body .headerlink:hover {{
-            color: #0969da;
-        }}
     </style>
 </head>
 <body>
@@ -344,6 +324,100 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 """
 
 
+def _stop_server(port: int = 5000) -> int:
+    """Stop the running mdview server. Returns 0 on success, 1 on failure."""
+    import http.client  # pylint: disable=import-outside-toplevel
+
+    # Try the HTTP shutdown endpoint first.
+    try:
+        conn = http.client.HTTPConnection("localhost", port, timeout=3)
+        conn.request("GET", "/api/shutdown")
+        conn.getresponse()
+        conn.close()
+        print(f"\u2705 Server on port {port} stopped.")
+        return 0
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass  # Server not running or already stopped — try PID fallback.
+
+    # Fallback: kill by PID file written by server.py.
+    from .server import pid_file_path  # pylint: disable=import-outside-toplevel
+
+    pid_file = pid_file_path(port)
+    if pid_file.exists():
+        try:
+            pid = int(pid_file.read_text(encoding="utf-8").strip())
+            os.kill(pid, 15)  # SIGTERM (cross-platform int avoids signal import)
+            pid_file.unlink(missing_ok=True)
+            print(f"\u2705 Server (PID {pid}) stopped.")
+            return 0
+        except ProcessLookupError:
+            pid_file.unlink(missing_ok=True)
+            print(f"No running server found on port {port} (stale PID file removed).")
+            return 0
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            print(f"\u274c Failed to stop server: {exc}", file=sys.stderr)
+            return 1
+
+    print(f"No mdview server found running on port {port}.")
+    return 0
+
+
+def _resolve_file(args) -> "Optional[int]":
+    """Validate args.file, prompting the user if needed.
+
+    Returns None when a valid file has been resolved into args.file.
+    Returns 0 or 1 to signal that main() should exit early with that code.
+    """
+    valid_extensions = (".md", ".markdown", ".mdown")
+
+    while True:
+        if args.file is not None:
+            if args.file.is_dir():
+                print(f"Error: '{args.file}' is a directory. Please include the filename.")
+                print(f"Example: mdview {args.file / 'README.md'}")
+            elif not args.file.suffix:
+                print(
+                    f"Error: '{args.file.name}' has no file extension."
+                    " Please enter a valid .md file and try again."
+                )
+            elif args.file.suffix.lower() not in valid_extensions:
+                print(
+                    f"Error: '{args.file.name}' has an unsupported"
+                    f" extension ('{args.file.suffix}')."
+                    " Please provide a .md, .markdown, or .mdown file."
+                )
+            elif not args.file.exists():
+                print(f"Error: '{args.file}' does not exist. Check the path and try again.")
+            else:
+                return None  # valid — proceed
+            if not sys.stdin.isatty():
+                return 1
+
+        if args.file is None and not sys.stdin.isatty():
+            print("Usage: mdview <file.md>")
+            print("Example: mdview README.md")
+            print("         mdview C:\\docs\\report.md")
+            return 1
+
+        try:
+            choice = input("Enter filename (or full path if not in current directory): ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nCancelled.")
+            return 0
+
+        if not choice:
+            print("No file entered. Please try again.")
+            args.file = None
+            continue
+
+        if choice.endswith(("/", "\\")):
+            print(f"Error: no filename in '{choice}'. Example: {Path(choice) / 'README.md'}")
+            args.file = None
+            continue
+
+        args.file = Path(choice)
+
+
 def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     """Start the Flask backend and open the file in the browser.
 
@@ -351,9 +425,22 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     returns immediately.  Otherwise a fully-detached background process is
     spawned (the terminal is still free after the browser opens).
     """
-    import subprocess  # pylint: disable=import-outside-toplevel
     import time  # pylint: disable=import-outside-toplevel
-    import urllib.request  # pylint: disable=import-outside-toplevel,redefined-outer-name
+    import http.client  # pylint: disable=import-outside-toplevel
+
+    def _server_up(p: int) -> bool:
+        """Return True if the server is accepting connections on *p*.
+        Uses http.client directly to avoid urllib creating an SSL context
+        (which hangs on some Windows Python 3.14 builds).
+        """
+        try:
+            conn = http.client.HTTPConnection("localhost", p, timeout=1)
+            conn.request("GET", "/api/health")
+            conn.getresponse()
+            conn.close()
+            return True
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False
 
     # Fail fast with a helpful message if Flask is not in the current Python environment.
     # This happens when a user has two Python installs (e.g. system Python + Poetry venv)
@@ -370,14 +457,7 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
     drive_root = Path(abs_path.anchor)  # e.g. C:\ on Windows, / on Unix
 
     # --- Check if a server is already running on this port ---
-    server_already_running = False
-    try:
-        urllib.request.urlopen(  # pylint: disable=consider-using-with
-            f"http://localhost:{port}/api/health", timeout=1
-        )
-        server_already_running = True
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
+    server_already_running = _server_up(port)
 
     if not server_already_running:
         # Spawn a fully-detached background process so the terminal returns
@@ -390,7 +470,7 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
             "-c",
             (
                 "from markdown_viewer.server import run_flask_app;"
-                f" run_flask_app(port={port}, use_reloader=True)"
+                f" run_flask_app(port={port}, use_reloader=False)"
             ),
         ]
 
@@ -417,14 +497,10 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
         print(f"Starting server on port {port}...")
         server_ready = False
         for _ in range(40):
-            try:
-                urllib.request.urlopen(  # pylint: disable=consider-using-with
-                    f"http://localhost:{port}/api/health", timeout=1
-                )
+            if _server_up(port):
                 server_ready = True
                 break
-            except Exception:  # pylint: disable=broad-exception-caught
-                time.sleep(0.25)
+            time.sleep(0.25)
 
         if not server_ready:
             print("❌ Server failed to start. Make sure all dependencies are installed.")
@@ -433,8 +509,12 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
 
     url = f"http://localhost:{port}?file={urllib.parse.quote(str(abs_path))}"
     print(f"Opening {url}")
-    webbrowser.open(url)
-    # Terminal returns immediately — server keeps running in the background.
+    if sys.platform == "win32":
+        # ShellExecute via `start` brings the browser window to the foreground;
+        # webbrowser.open() only flashes the taskbar when the browser is already running.
+        subprocess.Popen(f'start "" "{url}"', shell=True)  # pylint: disable=consider-using-with
+    else:
+        webbrowser.open(url)
 
 
 def render_markdown_file(
@@ -525,7 +605,8 @@ def export_to_pdf(filepath: Path, output: Optional[Path] = None) -> Path:
 
     # Determine output path
     if output:
-        pdf_path = output
+        # If the user passed a directory, place the file inside it
+        pdf_path = output / filepath.with_suffix(".pdf").name if output.is_dir() else output
     else:
         pdf_path = filepath.with_suffix(".pdf")
 
@@ -565,7 +646,8 @@ def export_to_word(filepath: Path, output: Optional[Path] = None) -> Path:
 
     # Determine output path
     if output:
-        word_path = output
+        # If the user passed a directory, place the file inside it
+        word_path = output / filepath.with_suffix(".docx").name if output.is_dir() else output
     else:
         word_path = filepath.with_suffix(".docx")
 
@@ -611,7 +693,7 @@ def share_via_email(filepath: Path, attachment_path: Path, file_type: str) -> No
     print("You can drag and drop the file into your email, or use the attach button.")
 
 
-def main():  # pylint: disable=too-many-branches,too-many-statements
+def main():  # pylint: disable=too-many-branches,too-many-statements,too-many-return-statements
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         description="Markdown Viewer - Render markdown files beautifully in your browser",
@@ -637,6 +719,11 @@ Examples:
   # CI/CD usage
   mdview docs/report.md --no-browser --keep
   mdview docs/report.md --export-pdf --export-word
+
+  # Stop the background server
+  mdview --stop                       # Stop the server running on the default port
+  mdview --stop -p 5001               # Stop the server on a custom port
+  mdview README.md -p 5001            # Open using a custom port
         """,
     )
 
@@ -682,71 +769,30 @@ Examples:
 
     parser.add_argument("--version", action="version", version=f"markdown-viewer {__version__}")
 
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+        help="Stop the running mdview background server and release the port",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=5000,
+        metavar="PORT",
+        help="Port for the background server (default: 5000)",
+    )
+
     args = parser.parse_args()
 
-    # If no file provided, show available markdown files and let user pick
-    if args.file is None:
-        md_files = sorted(
-            [
-                p
-                for p in Path(".").rglob("*.md")
-                if not any(part.startswith(".") for part in p.parts)
-            ],
-            key=lambda p: (len(p.parts), str(p)),
-        )[
-            :20
-        ]  # cap at 20 to avoid flooding
+    if args.stop:
+        return _stop_server(port=args.port)
 
-        if md_files:
-            print("No file specified. Markdown files found:")
-            for i, f in enumerate(md_files, 1):
-                print(f"  {i}. {f}")
-            print()
-        else:
-            print("Usage: mdview <file.md>  |  Example: mdview README.md")
-            return 1
-
-    valid_extensions = (".md", ".markdown", ".mdown")
-
-    # Resolve and validate — loop until a valid file is given
-    while True:
-        # If we have a file (from args or previous loop iteration), validate it
-        if args.file is not None:
-            if args.file.is_dir():
-                print(f"'{args.file}' is a directory, not a file. Please enter a .md file.")
-            elif not args.file.exists():
-                print(f"'{args.file}' does not exist. Please enter another file.")
-            elif args.file.suffix.lower() not in valid_extensions:
-                ext = args.file.suffix or "(no extension)"
-                print(
-                    f"'{args.file.name}' has an unsupported extension ({ext})."
-                    " Please provide a file with a .md extension."
-                )
-            else:
-                break  # valid file — exit loop
-
-        # Prompt for input (whether first time or after an error)
-        try:
-            choice = input("Enter a number or filename: ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nCancelled.")
-            return 0
-
-        if not choice:
-            print("No file entered. Please try again.")
-            args.file = None
-            continue
-
-        if choice.isdigit():
-            idx = int(choice) - 1
-            if md_files and 0 <= idx < len(md_files):
-                args.file = md_files[idx]
-            else:
-                bound = len(md_files) if md_files else 0
-                print(f"Invalid number. Please enter 1–{bound}.")
-                args.file = None
-        else:
-            args.file = Path(choice)
+    # Resolve and validate — loop until a valid file is given (or user cancels)
+    early_exit = _resolve_file(args)
+    if early_exit is not None:
+        return early_exit
 
     try:
         # Handle export to PDF
@@ -781,12 +827,24 @@ Examples:
                     print(f"✅ Rendered: {output_path}")
                 else:
                     print(f"✅ Rendered and opened: {output_path}")
+            elif not sys.stdout.isatty():
+                # Non-interactive environment (CI/CD, pipe, redirect) — generate HTML without
+                # spawning a background server or trying to open a browser.
+                output_path = render_markdown_file(
+                    filepath=args.file,
+                    open_browser=False,
+                    keep_output=True,
+                )
+                print(f"✅ Rendered: {output_path}")
             else:
-                # Default: open through the full Flask app — all features available
-                _open_in_flask_app(args.file)
+                # Default interactive mode: open through the full Flask app
+                _open_in_flask_app(args.file, port=args.port)
 
         return 0
 
+    except KeyboardInterrupt:
+        print("\nCancelled.", file=sys.stderr)
+        return 0
     except ImportError as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         return 1

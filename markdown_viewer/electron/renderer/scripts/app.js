@@ -464,7 +464,7 @@ class MarkdownViewerApp {
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize API client (fetch CSRF token)
     await window.MarkdownViewerAPI.init();
-    
+
     // Create and initialize app
     window.app = new MarkdownViewerApp();
 

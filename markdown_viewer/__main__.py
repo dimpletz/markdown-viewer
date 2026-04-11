@@ -46,6 +46,21 @@ def start_electron():
         ) from exc
 
 
+def _wait_for_server(port: int, attempts: int = 20) -> None:
+    """Poll the server health endpoint until it responds or attempts are exhausted."""
+    import http.client  # pylint: disable=import-outside-toplevel
+
+    for _ in range(attempts):
+        try:
+            conn = http.client.HTTPConnection("localhost", port, timeout=1)
+            conn.request("GET", "/api/health")
+            conn.getresponse()
+            conn.close()
+            return
+        except Exception:  # pylint: disable=broad-exception-caught
+            time.sleep(0.25)
+
+
 def main():
     """Main entry point."""
     import argparse  # pylint: disable=import-outside-toplevel
@@ -85,15 +100,7 @@ def main():
     server_process = start_server(port=args.port, debug=False)
 
     # Wait for server to be ready with a health-check poll instead of fixed sleep
-    backend_url = f"http://localhost:{args.port}/api/health"
-    import urllib.request  # pylint: disable=import-outside-toplevel
-
-    for _ in range(20):
-        try:
-            urllib.request.urlopen(backend_url, timeout=1)  # pylint: disable=consider-using-with
-            break
-        except Exception:  # pylint: disable=broad-exception-caught
-            time.sleep(0.25)
+    _wait_for_server(args.port)
 
     if args.no_gui:
         print(f"Server running at http://localhost:{args.port}")
