@@ -428,6 +428,14 @@ body {
 }
 
 /* Scrollbar Styling */
+
+/* Firefox 64+ standard scrollbar API */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}
+
+/* Chrome, Edge, Safari, Opera */
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

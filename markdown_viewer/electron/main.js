@@ -241,6 +241,31 @@ ipcMain.handle('save-export-file', async (event, filePath, data) => {
   }
 });
 
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']);
+const IMAGE_MIME = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp', '.ico': 'image/x-icon'
+};
+
+ipcMain.handle('read-image-as-dataurl', async (event, filePath) => {
+  try {
+    const validation = validateFilePath(filePath);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    const ext = path.extname(validation.resolvedPath).toLowerCase();
+    if (!IMAGE_EXTENSIONS.has(ext)) {
+      return { success: false, error: 'Unsupported image type' };
+    }
+    const data = fs.readFileSync(validation.resolvedPath);
+    const mime = IMAGE_MIME[ext] || 'application/octet-stream';
+    return { success: true, dataUrl: `data:${mime};base64,${data.toString('base64')}` };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
 

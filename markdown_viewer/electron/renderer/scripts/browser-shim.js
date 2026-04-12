@@ -117,10 +117,22 @@
 
     clipboard: {
       writeText(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).catch(() => _fallbackCopy(text));
-        } else {
-          _fallbackCopy(text);
+        // Modern Clipboard API: available in all current browsers on localhost.
+        // We intentionally do NOT chain .catch(fallbackCopy) here because the
+        // rejection callback runs asynchronously — by then Firefox (and Safari)
+        // will have expired the user-gesture context required for execCommand.
+        // Instead, try execCommand first (synchronous, works from any user
+        // gesture); only upgrade to the Clipboard API when it is available,
+        // so the synchronous fallback path is always exercised first and the
+        // async path is a best-effort improvement.
+        if (!_fallbackCopy(text)) {
+          // execCommand unavailable (e.g. Firefox 109+ in some pages) —
+          // fall through to the async Clipboard API.
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(function () {
+              /* best effort — user can still manually copy */
+            });
+          }
         }
       }
     },
@@ -143,7 +155,9 @@
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); } catch (_) { /* best effort */ }
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { /* best effort */ }
     document.body.removeChild(ta);
+    return ok;
   }
 })();

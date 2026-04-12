@@ -2,7 +2,16 @@
  * API client for backend communication
  */
 
-const BACKEND_URL = `http://localhost:${window.electronAPI?.getEnv('BACKEND_PORT') || 5000}`;
+// In Electron the main process exposes BACKEND_PORT via the preload IPC bridge.
+// In a plain browser (all non-Electron browsers: Chrome, Firefox, Edge, Safari,
+// Brave, Opera, …) the browser-shim makes getEnv() return undefined, so we fall
+// back to the origin of the page that Flask is serving.  This is always correct
+// regardless of which port the server started on (5000, 5001, …).
+const BACKEND_URL = (() => {
+  const envPort = window.electronAPI?.getEnv?.('BACKEND_PORT');
+  if (envPort) return `http://localhost:${envPort}`;
+  return window.location.origin;
+})();
 
 // CSRF token management
 let csrfToken = null;
@@ -124,5 +133,6 @@ const API = {
     }
 };
 
-// Make API available globally
+// Make API available globally, also expose the backend base URL
 window.MarkdownViewerAPI = API;
+window.MarkdownViewerAPI.getBackendUrl = () => BACKEND_URL;

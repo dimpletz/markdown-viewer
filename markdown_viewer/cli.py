@@ -1,10 +1,13 @@
-"""
+﻿"""
 Command-line interface for markdown viewer.
 Render markdown files and open them in browser.
 Export to PDF/Word and share via email.
 """
 
 import os
+import re
+import base64
+import mimetypes
 import subprocess
 import sys
 import argparse
@@ -17,6 +20,56 @@ import urllib.parse
 from markdown_viewer import __version__
 
 from .processors.markdown_processor import MarkdownProcessor
+
+_URL_SCHEMES = ("http://", "https://", "ftp://", "ftps://")
+
+
+_ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"}
+
+
+def _embed_local_images(html: str, base_dir: Path) -> str:
+    """Replace local image src attributes with base64 data URIs.
+
+    Used by the CLI path where the HTML is opened as a file:// URL and there is
+    no backend server available to serve /api/image requests.
+    Remote URLs and data: URIs are left unchanged.
+    """
+
+    def replace_src(match: re.Match) -> str:
+        src = match.group(1)
+        # Leave remote URLs, data URIs unchanged
+        if src.startswith(("http://", "https://", "data:", "ftp://")):
+            return match.group(0)
+
+        # URL-decode so %20 → space, etc.
+        src_decoded = urllib.parse.unquote(src)
+
+        # Resolve path (handle both absolute Windows paths and relative paths)
+        if os.path.isabs(src_decoded):
+            img_path = Path(src_decoded)
+        else:
+            # Normalize path separators (backslashes from Windows paths used as URLs)
+            src_normalized = src_decoded.replace("\\", "/")
+            img_path = (base_dir / src_normalized).resolve()
+
+        if img_path.suffix.lower() not in _ALLOWED_IMAGE_EXTENSIONS:
+            return match.group(0)
+
+        try:
+            img_data = img_path.read_bytes()
+        except OSError:
+            return match.group(0)
+
+        mime_type, _ = mimetypes.guess_type(str(img_path))
+        if img_path.suffix.lower() == ".svg":
+            mime_type = "image/svg+xml"
+        mime_type = mime_type or "application/octet-stream"
+
+        b64 = base64.b64encode(img_data).decode("ascii")
+        return f'src="data:{mime_type};base64,{b64}"'
+
+    return re.sub(r'src="([^"]*)"', replace_src, html)
+
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en" data-color-mode="light" data-light-theme="light" data-dark-theme="light">
@@ -42,7 +95,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             background-color: #f6f8fa !important;
             color: #24292e !important;
         }}
-        
+
         /* Floating Toolbar */
         .floating-toolbar {{
             position: fixed;
@@ -98,7 +151,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             align-items: center;
             gap: 8px;
         }}
-        
+
         .container {{
             max-width: 980px;
             margin: 0 auto;
@@ -153,7 +206,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             height: 1.2em !important;
             width: 1.2em !important;
         }}
-        
+
         /* Table of Contents styling */
         .markdown-body .toc {{
             background-color: #f6f8fa;
@@ -217,7 +270,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </button>
         </div>
     </div>
-    
+
     <div class="container">
         <article class="markdown-body">
 {content}
@@ -230,18 +283,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {{
             // Initialize Mermaid with proper configuration
-            mermaid.initialize({{ 
-                startOnLoad: true, 
+            mermaid.initialize({{
+                startOnLoad: true,
                 theme: 'default',
                 securityLevel: 'strict',
                 fontFamily: 'monospace'
             }});
-            
+
             // Render KaTeX math
             document.querySelectorAll('.arithmatex').forEach(function(el) {{
                 try {{
                     let math = el.textContent.trim();
-                    // Strip LaTeX delimiters  
+                    // Strip LaTeX delimiters
                     const isBlock = el.tagName === 'DIV';
                     if (isBlock) {{
                         // Block math: remove delimiters
@@ -250,7 +303,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         // Inline math: remove delimiters
                         math = math.replace(/^\\\\\\(/, '').replace(/\\\\\\)$/, '').trim();
                     }}
-                    
+
                     katex.render(math, el, {{
                         displayMode: isBlock,
                         throwOnError: false,
@@ -260,7 +313,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     console.error('KaTeX render error:', e, el.textContent);
                 }}
             }});
-            
+
             // Force Mermaid to render diagrams
             if (typeof mermaid !== 'undefined') {{
                 try {{
@@ -271,7 +324,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }}
         }});
     </script>
-    
+
     <!-- Export PDF Function -->
     <script>
         // Print to PDF using browser's print function
@@ -292,7 +345,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 setTimeout(() => {{ btn.innerHTML = orig; }}, 1500);
             }});
         }}
-        
+
         // Keyboard shortcut for print
         document.addEventListener('keydown', (e) => {{
             if (e.ctrlKey && e.key === 'p') {{
@@ -300,7 +353,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 printToPDF();
             }}
         }});
-        
+
         // Add print styles to hide toolbar when printing
         const printStyles = `
             @media print {{
@@ -372,24 +425,33 @@ def _resolve_file(args) -> "Optional[int]":
 
     while True:
         if args.file is not None:
-            if args.file.is_dir():
-                print(f"Error: '{args.file}' is a directory. Please include the filename.")
-                print(f"Example: mdview {args.file / 'README.md'}")
-            elif not args.file.suffix:
+            raw = args.file if isinstance(args.file, str) else str(args.file)
+            if raw.lower().startswith(_URL_SCHEMES):
                 print(
-                    f"Error: '{args.file.name}' has no file extension."
-                    " Please enter a valid .md file and try again."
+                    f"Only local markdown files are supported — '{raw}' looks like a URL.\n"
+                    "Please enter a local file path and try again.\n"
+                    "Example: mdview README.md  or  mdview C:\\docs\\report.md"
                 )
-            elif args.file.suffix.lower() not in valid_extensions:
-                print(
-                    f"Error: '{args.file.name}' has an unsupported"
-                    f" extension ('{args.file.suffix}')."
-                    " Please provide a .md, .markdown, or .mdown file."
-                )
-            elif not args.file.exists():
-                print(f"Error: '{args.file}' does not exist. Check the path and try again.")
             else:
-                return None  # valid — proceed
+                args.file = Path(raw)
+                if args.file.is_dir():
+                    print(f"Error: '{args.file}' is a directory. Please include the filename.")
+                    print(f"Example: mdview {args.file / 'README.md'}")
+                elif not args.file.suffix:
+                    print(
+                        f"Error: '{args.file.name}' has no file extension."
+                        " Please enter a valid .md file and try again."
+                    )
+                elif args.file.suffix.lower() not in valid_extensions:
+                    print(
+                        f"Error: '{args.file.name}' has an unsupported"
+                        f" extension ('{args.file.suffix}')."
+                        " Please provide a .md, .markdown, or .mdown file."
+                    )
+                elif not args.file.exists():
+                    print(f"Error: '{args.file}' does not exist. Check the path and try again.")
+                else:
+                    return None  # valid — proceed
             if not sys.stdin.isatty():
                 return 1
 
@@ -415,15 +477,20 @@ def _resolve_file(args) -> "Optional[int]":
             args.file = None
             continue
 
-        args.file = Path(choice)
+        args.file = choice  # kept as str; URL check + Path() conversion happen at next iteration
 
 
-def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
+def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] = None) -> None:
     """Start the Flask backend and open the file in the browser.
 
     If a server is already running on *port* it is reused, so the terminal
     returns immediately.  Otherwise a fully-detached background process is
     spawned (the terminal is still free after the browser opens).
+
+    Args:
+        browser: Optional executable name or full path of the browser to use
+                 (e.g. ``"firefox"``, ``"msedge"``, ``"/usr/bin/brave-browser"``).
+                 When *None* the system default browser is used.
     """
     import time  # pylint: disable=import-outside-toplevel
     import http.client  # pylint: disable=import-outside-toplevel
@@ -509,7 +576,23 @@ def _open_in_flask_app(filepath: Path, port: int = 5000) -> None:
 
     url = f"http://localhost:{port}?file={urllib.parse.quote(str(abs_path))}"
     print(f"Opening {url}")
-    if sys.platform == "win32":
+    if browser:
+        # User specified an explicit browser — launch it directly so the
+        # choice is respected regardless of the OS default.  Using
+        # webbrowser.get() + register() ensures the path is resolved by
+        # the stdlib (which handles quoting, PATH lookup, etc.).
+        try:
+            controller = webbrowser.get(browser)
+            controller.open(url)
+        except webbrowser.Error:
+            # Fall back: try launching as a subprocess directly so the user
+            # can pass a full executable path like '/usr/bin/brave-browser'.
+            subprocess.Popen(  # pylint: disable=consider-using-with
+                [browser, url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    elif sys.platform == "win32":
         # ShellExecute via `start` brings the browser window to the foreground;
         # webbrowser.open() only flashes the taskbar when the browser is already running.
         subprocess.Popen(f'start "" "{url}"', shell=True)  # pylint: disable=consider-using-with
@@ -544,6 +627,9 @@ def render_markdown_file(
     # Process markdown
     processor = MarkdownProcessor()
     html_content = processor.process(markdown_content)
+
+    # Embed local images as base64 data URIs so they load from a file:// URL
+    html_content = _embed_local_images(html_content, filepath.parent)
 
     # Generate HTML
     html = HTML_TEMPLATE.format(
@@ -705,17 +791,17 @@ Examples:
   mdview README.md -o output.html     # Save to specific file
   mdview README.md --no-browser       # Just render, don't open
   mdview README.md --keep             # Save as README.html
-  
+
   # Export to PDF/Word
   mdview README.md --export-pdf       # Export to README.pdf
   mdview README.md --export-pdf report.pdf  # Export to specific file
   mdview README.md --export-word      # Export to README.docx
   mdview README.md --export-word doc.docx   # Export to specific file
-  
+
   # Share via email
   mdview README.md --share-pdf        # Export and prepare email with PDF
   mdview README.md --share-word       # Export and prepare email with Word doc
-  
+
   # CI/CD usage
   mdview docs/report.md --no-browser --keep
   mdview docs/report.md --export-pdf --export-word
@@ -724,10 +810,17 @@ Examples:
   mdview --stop                       # Stop the server running on the default port
   mdview --stop -p 5001               # Stop the server on a custom port
   mdview README.md -p 5001            # Open using a custom port
+
+  # Choose a specific browser
+  mdview README.md --browser firefox
+  mdview README.md --browser chrome
+  mdview README.md --browser msedge
+  mdview README.md --browser iexplore
+  mdview README.md --browser "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
         """,
     )
 
-    parser.add_argument("file", nargs="?", type=Path, help="Path to the markdown file to render")
+    parser.add_argument("file", nargs="?", type=str, help="Path to the markdown file to render")
 
     parser.add_argument(
         "-o", "--output", type=Path, help="Output HTML file path (default: temporary file)"
@@ -784,6 +877,19 @@ Examples:
         help="Port for the background server (default: 5000)",
     )
 
+    parser.add_argument(
+        "--browser",
+        type=str,
+        default=None,
+        metavar="BROWSER",
+        help=(
+            "Browser to open (e.g. firefox, chrome, msedge, iexplore, safari, opera, brave). "
+            "Accepts a browser name recognised by the Python webbrowser module or "
+            "a full path to the browser executable. "
+            "Defaults to the system default browser."
+        ),
+    )
+
     args = parser.parse_args()
 
     if args.stop:
@@ -838,7 +944,7 @@ Examples:
                 print(f"✅ Rendered: {output_path}")
             else:
                 # Default interactive mode: open through the full Flask app
-                _open_in_flask_app(args.file, port=args.port)
+                _open_in_flask_app(args.file, port=args.port, browser=args.browser)
 
         return 0
 

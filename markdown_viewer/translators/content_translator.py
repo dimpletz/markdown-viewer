@@ -1,4 +1,4 @@
-"""
+﻿"""
 Content translator using the MyMemory translation API directly.
 """
 
@@ -11,7 +11,7 @@ import socket
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +44,7 @@ def _mymemory_request(text: str, source_locale: str, target_locale: str) -> str:
         with urllib.request.urlopen(url, timeout=TRANSLATE_CHUNK_TIMEOUT) as resp:  # nosec
             data = json.loads(resp.read())
     except socket.timeout as exc:
-        raise TimeoutError(
-            f"MyMemory API timed out after {TRANSLATE_CHUNK_TIMEOUT}s"
-        ) from exc
+        raise TimeoutError(f"MyMemory API timed out after {TRANSLATE_CHUNK_TIMEOUT}s") from exc
     if data.get("responseStatus") == 200:
         return data["responseData"].get("translatedText") or text
     return text
@@ -186,14 +184,14 @@ class ContentTranslator:
 
         # Translate all chunks in parallel (up to max_parallel workers)
         max_parallel = 5
-        results = [None] * len(chunks)
+        results: List[Optional[str]] = [None] * len(chunks)
         with ThreadPoolExecutor(max_workers=max_parallel) as pool:
             futures = {pool.submit(translate_chunk, (i, c)): i for i, c in enumerate(chunks)}
             for future in futures:
                 idx, text = future.result()  # re-raises TimeoutError if any chunk timed out
                 results[idx] = text
 
-        return "".join(results)
+        return "".join(r or "" for r in results)
 
     def _split_content(self, content: str) -> List[Dict[str, Any]]:
         """

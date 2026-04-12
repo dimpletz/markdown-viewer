@@ -1,1 +1,1 @@
-"""Translators package for content translation."""
+﻿"""Translators package for content translation."""

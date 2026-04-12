@@ -1,13 +1,16 @@
-"""
+﻿"""
 API routes for markdown processing, export, and translation.
 """
 
 # pylint: disable=broad-exception-caught
 
 import os
+import re
+import mimetypes
 import tempfile
 import logging
 import threading
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
@@ -77,6 +80,91 @@ api_bp = Blueprint("api", __name__)
 markdown_processor = MarkdownProcessor()
 file_handler = FileHandler()
 
+# Allowed image extensions for the /api/image endpoint
+_ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"}
+
+
+def _rewrite_image_urls(html: str, base_dir: str) -> str:
+    """Rewrite local image src attributes to /api/image?path=<encoded-abs-path> URLs.
+
+    The browser fetches images via the Flask /api/image endpoint, which serves the
+    file directly. Relative /api/image URLs pass DOMPurify's default URI allowlist
+    without any configuration. Remote URLs and data URIs are left unchanged.
+    """
+    if not base_dir:
+        return html
+
+    base_path = Path(base_dir)
+
+    def replace_src(match: re.Match) -> str:
+        src = match.group(1)
+        # Leave remote URLs, existing data URIs, and /api/image paths unchanged
+        if src.startswith(("http://", "https://", "data:", "ftp://", "file://", "mailto:", "/api/image")):
+            return match.group(0)
+
+        # URL-decode first so %20 → space, backslash paths from markdown → real path
+        src_decoded = urllib.parse.unquote(src)
+
+        # Resolve to an absolute path; normalise backslashes for Windows paths
+        if os.path.isabs(src_decoded):
+            img_path = Path(src_decoded)
+        else:
+            src_normalized = src_decoded.replace("\\", "/")
+            img_path = (base_path / src_normalized).resolve()
+
+        if img_path.suffix.lower() not in _ALLOWED_IMAGE_EXTENSIONS:
+            return match.group(0)
+
+        # Encode the absolute path for use as a query parameter
+        encoded = urllib.parse.quote(str(img_path), safe="")
+        return f'src="/api/image?path={encoded}"'
+
+    return re.sub(r'src="([^"]*)"', replace_src, html)
+
+
+_ALLOWED_MD_EXTENSIONS = {".md", ".markdown", ".mdown"}
+
+
+def _rewrite_md_links(html: str, base_dir: str) -> str:
+    """Rewrite local markdown href links to /?file=<abs-path> viewer URLs.
+
+    This ensures that clicking a relative link like [README](../README.md) opens
+    the target file inside the viewer instead of returning a 404.
+    Remote URLs and anchor-only links are left unchanged.
+    """
+    if not base_dir:
+        return html
+
+    base_path = Path(base_dir)
+
+    def replace_href(match: re.Match) -> str:
+        href = match.group(1)
+        # Leave remote URLs, anchors, data URIs, and already-viewer URLs unchanged
+        if href.startswith(("http://", "https://", "data:", "ftp://", "#", "/?file=", "/api/")):
+            return match.group(0)
+
+        href_decoded = urllib.parse.unquote(href)
+        # Strip any fragment from the path before resolving
+        fragment = ""
+        if "#" in href_decoded:
+            href_decoded, fragment = href_decoded.split("#", 1)
+            fragment = "#" + fragment
+
+        if os.path.isabs(href_decoded):
+            md_path = Path(href_decoded)
+        else:
+            md_path = (base_path / href_decoded.replace("\\", "/")).resolve()
+
+        if md_path.suffix.lower() not in _ALLOWED_MD_EXTENSIONS:
+            return match.group(0)
+
+        encoded = urllib.parse.quote(str(md_path), safe="")
+        # Re-encode the fragment so special chars can't break out of the href attribute
+        safe_fragment = "#" + urllib.parse.quote(fragment[1:], safe="-_.~") if fragment else ""
+        return f'href="/?file={encoded}{safe_fragment}"'
+
+    return re.sub(r'href="([^"]*)"', replace_href, html)
+
 
 @api_bp.route("/test", methods=["GET"])
 def test_page():
@@ -85,6 +173,43 @@ def test_page():
     if test_html_path.exists():
         return send_file(test_html_path, mimetype="text/html")
     return jsonify({"error": "Test page not found"}), 404
+
+
+@api_bp.route("/image", methods=["GET"])
+def serve_image() -> Tuple[Any, int]:
+    """Serve a local image file referenced by an absolute path.
+
+    Security: path must resolve within ALLOWED_DOCUMENTS_DIR and must have
+    a recognised image extension.
+    """
+    file_path = request.args.get("path", "").strip()
+    if not file_path:
+        return jsonify({"error": "No path provided"}), 400
+
+    try:
+        requested_path = Path(file_path).resolve()
+    except (ValueError, OSError):
+        return jsonify({"error": "Invalid path"}), 400
+
+    # SECURITY: Restrict access to the allowed base directory
+    allowed_base = Path(current_app.config.get("ALLOWED_DOCUMENTS_DIR", Path.home())).resolve()
+    try:
+        requested_path.relative_to(allowed_base)
+    except ValueError:
+        logger.warning("[%s] Image path traversal attempt: %s", g.request_id, requested_path)
+        return jsonify({"error": "Access denied: path outside allowed directory"}), 403
+
+    if not requested_path.exists() or not requested_path.is_file():
+        return jsonify({"error": "Image not found"}), 404
+
+    if requested_path.suffix.lower() not in _ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({"error": "Unsupported image type"}), 400
+
+    mime_type, _ = mimetypes.guess_type(str(requested_path))
+    mime_type = mime_type or "application/octet-stream"
+
+    logger.info("[%s] Serving image: %s", g.request_id, requested_path)
+    return send_file(requested_path, mimetype=mime_type)
 
 
 # Lazy initialization for resource-heavy services
@@ -221,10 +346,22 @@ def render_markdown() -> Tuple[Dict[str, Any], int]:
 
         markdown_content = data.get("content", "")
         options = data.get("options", {})
+        # Strip any processor-internal keys the client may have supplied to prevent injection
+        options.pop("base_dir", None)
+        options.pop("allowed_base", None)
+        base_path = options.get("basePath", "")
+        if base_path:
+            options["base_dir"] = base_path
+            allowed_base = Path(current_app.config.get("ALLOWED_DOCUMENTS_DIR", Path.home())).resolve()
+            options["allowed_base"] = str(allowed_base)
 
         logger.info("[%s] Rendering markdown, size: %s bytes", g.request_id, len(markdown_content))
 
         html_content = markdown_processor.process(markdown_content, options)
+
+        if base_path:
+            html_content = _rewrite_image_urls(html_content, base_path)
+            html_content = _rewrite_md_links(html_content, base_path)
 
         return jsonify({"success": True, "html": html_content}), 200
 
@@ -283,7 +420,16 @@ def open_file() -> Tuple[Dict[str, Any], int]:  # pylint: disable=too-many-retur
 
         logger.info("[%s] Opening file: %s", g.request_id, requested_path)
         content = file_handler.read_file(str(requested_path))
-        html_content = markdown_processor.process(content)
+        base_dir = str(requested_path.parent)
+        html_content = markdown_processor.process(
+            content,
+            {
+                "base_dir": base_dir,
+                "allowed_base": str(allowed_base),
+            },
+        )
+        html_content = _rewrite_image_urls(html_content, base_dir)
+        html_content = _rewrite_md_links(html_content, base_dir)
 
         return (
             jsonify(

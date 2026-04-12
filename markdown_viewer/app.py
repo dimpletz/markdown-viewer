@@ -1,4 +1,4 @@
-"""
+﻿"""
 Flask application factory and configuration.
 """
 
@@ -9,7 +9,7 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any
 import uuid
 
-from flask import Flask, g, jsonify, request, send_from_directory, Blueprint
+from flask import Flask, g, jsonify, request, send_from_directory, Blueprint, make_response
 from flask_cors import CORS
 from flask_wtf.csrf import CSRFProtect
 
@@ -175,11 +175,15 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
 
     @ui_bp.route("/styles/<path:filename>")
     def renderer_styles(filename):
-        return send_from_directory(os.path.join(renderer_dir, "styles"), filename)
+        resp = make_response(send_from_directory(os.path.join(renderer_dir, "styles"), filename))
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     @ui_bp.route("/scripts/<path:filename>")
     def renderer_scripts(filename):
-        return send_from_directory(os.path.join(renderer_dir, "scripts"), filename)
+        resp = make_response(send_from_directory(os.path.join(renderer_dir, "scripts"), filename))
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     app.register_blueprint(ui_bp)
 

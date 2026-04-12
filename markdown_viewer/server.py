@@ -1,4 +1,4 @@
-"""
+﻿"""
 Server management for the markdown viewer backend.
 """
 

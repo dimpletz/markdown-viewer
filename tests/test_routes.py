@@ -424,3 +424,408 @@ def test_translate_exception_returns_500(client):
     assert response.status_code == 500
     data = response.get_json()
     assert data["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Image serving endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_serve_image_success(client, tmp_path):
+    """GET /api/image?path=<png> serves the image with correct MIME type."""
+    img = tmp_path / "photo.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)  # minimal PNG header
+
+    response = client.get(f"/api/image?path={img}")
+    assert response.status_code == 200
+    assert response.content_type.startswith("image/png")
+
+
+def test_serve_image_no_path_returns_400(client):
+    """GET /api/image without path parameter returns 400."""
+    response = client.get("/api/image")
+    assert response.status_code == 400
+
+
+def test_serve_image_not_found_returns_404(client, tmp_path):
+    """GET /api/image with a nonexistent path returns 404."""
+    response = client.get(f"/api/image?path={tmp_path / 'missing.png'}")
+    assert response.status_code == 404
+
+
+def test_serve_image_path_traversal_returns_403(client, tmp_path):
+    """GET /api/image with a path outside allowed dir returns 403."""
+    outside = tmp_path / ".." / ".." / "etc" / "secret.png"
+    response = client.get(f"/api/image?path={outside}")
+    assert response.status_code in (403, 404)
+
+
+def test_serve_image_unsupported_extension_returns_400(client, tmp_path):
+    """GET /api/image for a non-image extension returns 400."""
+    txt = tmp_path / "readme.txt"
+    txt.write_text("hello", encoding="utf-8")
+    response = client.get(f"/api/image?path={txt}")
+    assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# _rewrite_image_urls helper
+# ---------------------------------------------------------------------------
+
+
+def test_rewrite_image_urls_relative(tmp_path):
+    """_rewrite_image_urls rewrites relative paths to /api/image?path= URLs."""
+    from markdown_viewer.routes import _rewrite_image_urls
+
+    img = tmp_path / "img.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    html = '<img src="img.png" alt="test">'
+    result = _rewrite_image_urls(html, str(tmp_path))
+    assert '/api/image?path=' in result
+    assert 'img.png' in result
+
+
+def test_rewrite_image_urls_absolute(tmp_path):
+    """_rewrite_image_urls rewrites absolute local paths to /api/image?path= URLs."""
+    from markdown_viewer.routes import _rewrite_image_urls
+
+    img = tmp_path / "photo.jpg"
+    img.write_bytes(b"\xff\xd8\xff" + b"\x00" * 5)
+    html = f'<img src="{img}" alt="photo">'
+    result = _rewrite_image_urls(html, str(tmp_path))
+    assert '/api/image?path=' in result
+
+
+def test_rewrite_image_urls_skips_http(tmp_path):
+    """_rewrite_image_urls leaves http:// URLs unchanged."""
+    from markdown_viewer.routes import _rewrite_image_urls
+
+    html = '<img src="https://example.com/img.png" alt="remote">'
+    result = _rewrite_image_urls(html, str(tmp_path))
+    assert result == html
+
+
+def test_rewrite_image_urls_skips_data_uri(tmp_path):
+    """_rewrite_image_urls leaves existing data: URIs unchanged."""
+    from markdown_viewer.routes import _rewrite_image_urls
+
+    html = '<img src="data:image/png;base64,abc123" alt="data">'
+    result = _rewrite_image_urls(html, str(tmp_path))
+    assert result == html
+
+
+def test_rewrite_image_urls_no_base_dir():
+    """_rewrite_image_urls returns html unchanged when base_dir is empty."""
+    from markdown_viewer.routes import _rewrite_image_urls
+
+    html = '<img src="image.png" alt="x">'
+    assert _rewrite_image_urls(html, "") == html
+
+
+def test_render_with_base_path_rewrites_images(client, tmp_path):
+    """POST /api/render with basePath option rewrites local images to /api/image URLs."""
+    img = tmp_path / "diagram.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    md = "![alt](diagram.png)"
+    response = client.post(
+        "/api/render",
+        json={"content": md, "options": {"basePath": str(tmp_path)}},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "/api/image?path=" in data["html"]
+
+
+def test_open_file_rewrites_image_urls(client, tmp_path):
+    """POST /api/file/open rewrites local images to /api/image?path= URLs in the returned HTML."""
+    img = tmp_path / "logo.png"
+    img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
+    md_file = tmp_path / "doc.md"
+    md_file.write_text("# Doc\n\n![logo](logo.png)", encoding="utf-8")
+
+    response = client.post("/api/file/open", json={"path": str(md_file)})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "/api/image?path=" in data["html"]
+
+
+# ---------------------------------------------------------------------------
+# _rewrite_md_links
+# ---------------------------------------------------------------------------
+
+
+def test_rewrite_md_links_relative(tmp_path):
+    """_rewrite_md_links rewrites relative .md hrefs to /?file= viewer URLs."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    child = tmp_path / "child.md"
+    html = f'<a href="child.md">child</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert '/?file=' in result
+    assert "child.md" not in result.split("/?file=")[0].split('href="')[-1]
+
+
+def test_rewrite_md_links_absolute(tmp_path):
+    """_rewrite_md_links rewrites absolute local .md paths to /?file= viewer URLs."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    abs_path = str(tmp_path / "notes.md")
+    html = f'<a href="{abs_path}">notes</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert '/?file=' in result
+
+
+def test_rewrite_md_links_remote_unchanged(tmp_path):
+    """_rewrite_md_links leaves http:// links unchanged."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    html = '<a href="https://example.com/doc.md">remote</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert result == html
+
+
+def test_rewrite_md_links_anchor_unchanged(tmp_path):
+    """_rewrite_md_links leaves anchor-only hrefs unchanged."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    html = '<a href="#section">jump</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert result == html
+
+
+def test_rewrite_md_links_non_md_unchanged(tmp_path):
+    """_rewrite_md_links leaves non-.md local links unchanged."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    html = '<a href="archive.zip">download</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert result == html
+
+
+def test_rewrite_md_links_no_base_dir():
+    """_rewrite_md_links returns html unchanged when base_dir is empty."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    html = '<a href="doc.md">doc</a>'
+    assert _rewrite_md_links(html, "") == html
+
+
+def test_rewrite_md_links_fragment_encoded(tmp_path):
+    """_rewrite_md_links URL-encodes special characters in the fragment."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    html = '<a href="doc.md#section-name">doc</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert '/?file=' in result
+    # Fragment must remain in the rewritten URL
+    assert "#" in result
+
+
+def test_rewrite_md_links_fragment_special_chars_encoded(tmp_path):
+    """_rewrite_md_links re-encodes dangerous characters that arrive URL-encoded in fragments."""
+    from markdown_viewer.routes import _rewrite_md_links
+
+    # A URL-encoded fragment that, after unquote, decodes to injection content.
+    # e.g. doc.md#%22%3E%3Cscript%3E → decoded: doc.md#"><script>
+    html = '<a href="doc.md#%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E">xss</a>'
+    result = _rewrite_md_links(html, str(tmp_path))
+    assert "/?file=" in result
+    # After re-encoding the fragment, raw angle brackets must not appear in the href value
+    assert "<script>" not in result
+
+
+def test_render_with_base_path_rewrites_md_links(client, tmp_path):
+    """POST /api/render with basePath rewrites .md links to /?file= viewer URLs."""
+    md = "[child](child.md)"
+    response = client.post(
+        "/api/render",
+        json={"content": md, "options": {"basePath": str(tmp_path)}},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "/?file=" in data["html"]
+
+
+def test_open_file_rewrites_md_links(client, tmp_path):
+    """POST /api/file/open rewrites .md links to /?file= viewer URLs in returned HTML."""
+    child = tmp_path / "child.md"
+    child.write_text("# Child", encoding="utf-8")
+    md_file = tmp_path / "parent.md"
+    md_file.write_text("[child](child.md)", encoding="utf-8")
+
+    response = client.post("/api/file/open", json={"path": str(md_file)})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "/?file=" in data["html"]
+
+
+# ---------------------------------------------------------------------------
+# Security: client-injected base_dir is stripped in /api/render
+# ---------------------------------------------------------------------------
+
+
+def test_render_client_base_dir_is_stripped(client, tmp_path):
+    """POST /api/render ignores client-supplied base_dir to prevent path injection."""
+    # Create a file we don't want to be includeable
+    secret = tmp_path / "secret.md"
+    secret.write_text("TOP SECRET", encoding="utf-8")
+
+    # Client tries to set base_dir to a path outside ALLOWED_DOCUMENTS_DIR
+    md = "![[secret.md]]"
+    response = client.post(
+        "/api/render",
+        json={
+            "content": md,
+            "options": {
+                "base_dir": str(tmp_path),    # client-supplied – must be stripped
+                "basePath": "",               # no legitimate basePath
+            },
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    # Without a valid basePath, no include resolution happens at all
+    assert "TOP SECRET" not in data["html"]
+
+
+def test_render_client_allowed_base_is_stripped(client, tmp_path):
+    """POST /api/render ignores client-supplied allowed_base; server always sets it."""
+    secret = tmp_path / "other" / "secret.md"
+    secret.parent.mkdir(parents=True, exist_ok=True)
+    secret.write_text("SENSITIVE", encoding="utf-8")
+
+    md = "![[other/secret.md]]"
+    # Client supplies both base_dir and a wide-open allowed_base — both must be ignored
+    response = client.post(
+        "/api/render",
+        json={
+            "content": md,
+            "options": {
+                "base_dir": str(tmp_path),
+                "allowed_base": "/",          # client tries to widen scope
+                "basePath": "",
+            },
+        },
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "SENSITIVE" not in data["html"]
+
+
+def test_render_with_base_path_resolves_includes(client, tmp_path):
+    """POST /api/render with legitimate basePath does resolve transclusion."""
+    child = tmp_path / "note.md"
+    child.write_text("## Embedded Note\n", encoding="utf-8")
+    md = "![[note.md]]"
+    response = client.post(
+        "/api/render",
+        json={"content": md, "options": {"basePath": str(tmp_path)}},
+    )
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "Embedded Note" in data["html"]
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: shutdown, image 403, translate errors, test_page
+# ---------------------------------------------------------------------------
+
+
+def test_shutdown_server_returns_200(client):
+    """GET /api/shutdown returns 200 (daemon thread exits process after response)."""
+    from unittest.mock import patch
+
+    # Patch os._exit so the test process doesn't actually exit
+    with patch("os._exit"):
+        response = client.get("/api/shutdown")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["success"] is True
+
+
+def test_serve_image_path_traversal_returns_403_explicit(client, tmp_path):
+    """GET /api/image with a path that resolves outside allowed dir returns 403."""
+    import urllib.parse
+
+    # Build a path that, after resolve(), is outside tmp_path
+    outside = "/etc/secret.png"
+    encoded = urllib.parse.quote(outside, safe="")
+    response = client.get(f"/api/image?path={encoded}")
+    assert response.status_code in (403, 404)
+
+
+def test_translate_validation_error_returns_400(client):
+    """POST /api/translate with an empty body returns 400 (ValidationError)."""
+    response = client.post("/api/translate", json={})
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["success"] is False
+
+
+def test_translate_timeout_error_returns_400(client):
+    """POST /api/translate returns 400 when a TimeoutError is raised."""
+    with patch("markdown_viewer.routes.ContentTranslator") as mock_cls:
+        mock_cls.return_value.get_supported_languages.return_value = {"es": "Spanish"}
+        mock_cls.return_value.translate.side_effect = TimeoutError("too slow")
+
+        response = client.post(
+            "/api/translate",
+            json={"content": "Hello", "source": "en", "target": "es"},
+        )
+
+    assert response.status_code == 400
+    data = response.get_json()
+    assert data["success"] is False
+
+
+def test_export_pdf_validation_error_returns_400(client):
+    """POST /api/export/pdf with completely invalid data returns 400."""
+    response = client.post("/api/export/pdf", json={"html": None})
+    assert response.status_code == 400
+
+
+def test_export_word_validation_error_returns_400(client):
+    """POST /api/export/word with completely invalid data returns 400."""
+    response = client.post("/api/export/word", json={"html": None})
+    assert response.status_code == 400
+
+
+def test_test_page_exists(client, tmp_path, monkeypatch):
+    """GET /api/test serves test.html when it exists."""
+    from pathlib import Path
+    from unittest.mock import patch
+
+    import markdown_viewer.routes as routes_module
+
+    fake_test_html = Path(routes_module.__file__).parent.parent / "test.html"
+
+    # Use send_file mock to avoid creating a real file on disk
+    with (
+        patch("markdown_viewer.routes.Path.exists", return_value=True),
+        patch(
+            "markdown_viewer.routes.send_file",
+            return_value=client.application.make_response(
+                ("<html><body>test</body></html>", 200, {"Content-Type": "text/html"})
+            ),
+        ),
+    ):
+        response = client.get("/api/test")
+
+    assert response.status_code == 200
+
+
+def test_http_exception_handler(client):
+    """A 404 HTTPException is handled with the JSON error format."""
+    response = client.get("/api/nonexistent_route_xyz")
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data["success"] is False
+
+
+def test_generic_exception_handler(app, client):
+    """An unhandled exception in a route returns 500 with JSON error."""
+    with patch("markdown_viewer.routes.markdown_processor.process", side_effect=ValueError("x")):
+        response = client.post("/api/render", json={"content": "# Hello"})
+    assert response.status_code in (400, 500)
+

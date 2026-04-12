@@ -1,8 +1,8 @@
-"""
+﻿"""
 Markdown Viewer - Beautiful markdown renderer with GitHub emoji, Mermaid diagrams, and KaTeX math.
 """
 
-__version__ = "1.1.3"
+__version__ = "1.2.0"
 __author__ = "Ofelia B Webb"
 __email__ = "ofelia.b.webb@gmail.com"
 

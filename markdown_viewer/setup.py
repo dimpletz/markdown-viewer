@@ -1,4 +1,4 @@
-"""
+﻿"""
 First-time setup script for Markdown Viewer
 Run this after installing the package to set up all dependencies
 """

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main entry point for the markdown-viewer application.
 """
 

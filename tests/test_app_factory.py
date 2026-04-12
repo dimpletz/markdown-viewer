@@ -171,3 +171,122 @@ def test_init_lazy_attribute_error():
 
     with pytest.raises(AttributeError):
         _ = markdown_viewer.nonexistent_attribute_xyz
+
+
+# ---------------------------------------------------------------------------
+# UI routes (index, styles, scripts)
+# ---------------------------------------------------------------------------
+
+
+def _make_test_client(tmp_path):
+    """Helper to create a test client with a clean config."""
+    from markdown_viewer.app import create_app
+
+    (tmp_path / "temp").mkdir(exist_ok=True)
+    (tmp_path / "uploads").mkdir(exist_ok=True)
+    app = create_app(
+        {
+            "SECRET_KEY": "test-secret",
+            "TESTING": True,
+            "WTF_CSRF_ENABLED": False,
+            "ALLOWED_DOCUMENTS_DIR": str(tmp_path),
+            "TEMP_FOLDER": str(tmp_path / "temp"),
+            "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+        }
+    )
+    return app.test_client()
+
+
+def test_ui_index_route(tmp_path):
+    """GET / serves the Electron renderer index.html."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"html" in response.data.lower()
+
+
+def test_ui_styles_route(tmp_path):
+    """GET /styles/main.css serves the renderer CSS with no-store cache header."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/styles/main.css")
+    assert response.status_code == 200
+    assert response.headers.get("Cache-Control") == "no-store"
+
+
+def test_ui_scripts_route(tmp_path):
+    """GET /scripts/app.js serves the renderer JS with no-store cache header."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/scripts/app.js")
+    assert response.status_code == 200
+    assert response.headers.get("Cache-Control") == "no-store"
+
+
+def test_http_exception_handler_format(tmp_path):
+    """An HTTP 404 from a missing route returns JSON with success=False."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/api/does_not_exist_xyz")
+    assert response.status_code == 404
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["error"]["code"] == 404
+
+
+def test_generic_exception_handler_format(tmp_path):
+    """A route that raises an unhandled exception returns 500 JSON."""
+    from unittest.mock import patch
+
+    client = _make_test_client(tmp_path)
+    with patch(
+        "markdown_viewer.routes.markdown_processor.process",
+        side_effect=RuntimeError("unexpected"),
+    ):
+        response = client.post("/api/render", json={"content": "# Hello"})
+    assert response.status_code == 500
+    data = response.get_json()
+    assert data["success"] is False
+
+
+def test_configure_logging_creates_log_dir(tmp_path, monkeypatch):
+    """configure_logging() creates the logs/ dir and attaches a file handler when not in debug."""
+    import os
+    from unittest.mock import patch
+
+    from markdown_viewer.app import create_app
+
+    log_dir = tmp_path / "logs"
+
+    # Patch os.path.exists to return False (logs dir doesn't exist) and os.mkdir to track the call
+    real_exists = os.path.exists
+    mkdir_calls = []
+
+    def fake_exists(path):
+        if str(path).endswith("logs"):
+            return False
+        return real_exists(path)
+
+    def fake_mkdir(path, mode=0o777):
+        mkdir_calls.append(path)
+        # don't actually create; RotatingFileHandler will fail without the dir so also patch it
+        pass
+
+    (tmp_path / "temp").mkdir(exist_ok=True)
+    (tmp_path / "uploads").mkdir(exist_ok=True)
+
+    with (
+        patch("os.path.exists", side_effect=fake_exists),
+        patch("os.mkdir", side_effect=fake_mkdir),
+        patch("logging.handlers.RotatingFileHandler", autospec=True),
+    ):
+        app = create_app(
+            {
+                "SECRET_KEY": "test-secret",
+                "TESTING": False,  # triggers configure_logging non-debug path
+                "DEBUG": False,
+                "WTF_CSRF_ENABLED": False,
+                "TEMP_FOLDER": str(tmp_path / "temp"),
+                "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+            }
+        )
+
+    # os.mkdir was called for "logs"
+    assert any("logs" in str(p) for p in mkdir_calls)

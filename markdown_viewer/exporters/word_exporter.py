@@ -1,4 +1,4 @@
-"""
+﻿"""
 Word document exporter using python-docx.
 """
 

@@ -83,6 +83,7 @@ mdview [file] [options]
 | `--export-word [path]` | — | Export to Word (`.docx`); optionally specify an output path |
 | `--share-pdf` | — | Export to PDF and open your email client with it attached |
 | `--share-word` | — | Export to Word and open your email client with it attached |
+| `--browser <name-or-path>` | *(system default)* | Browser to open (e.g. `firefox`, `chrome`, `msedge`, `safari`, `opera`, `iexplore`). Accepts any name recognised by Python's `webbrowser` module or a full path to the browser executable |
 | `-p`, `--port <port>` | `5000` | Port for the background Flask server |
 | `--stop` | — | Stop the background server and release the port |
 | `--version` | — | Print the installed version and exit |
@@ -113,6 +114,18 @@ mdview README.md --export-pdf --export-word
 # --- Email sharing ---
 mdview README.md --share-pdf   # Export PDF and open email client
 mdview README.md --share-word  # Export Word and open email client
+
+# --- Browser selection ---
+mdview README.md --browser firefox              # Open in Firefox
+mdview README.md --browser chrome               # Open in Google Chrome
+mdview README.md --browser msedge               # Open in Microsoft Edge
+mdview README.md --browser safari               # Open in Safari (macOS)
+mdview README.md --browser opera                # Open in Opera
+mdview README.md --browser brave                # Open in Brave (if on PATH)
+mdview README.md --browser iexplore             # Open in Internet Explorer
+# Full executable path (useful when browser is not on PATH)
+mdview README.md --browser "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+mdview README.md --browser "/usr/bin/google-chrome"
 
 # --- Server / port management ---
 mdview README.md -p 5001       # Open using a custom port
@@ -163,6 +176,49 @@ mdview --version
 - Path traversal protection
 - Localhost-only server binding (127.0.0.1)
 
+### 🔗 Local File Navigation
+- Both **relative** and **absolute** paths to `.md` files open the target inside the viewer — no 404s:
+  ```markdown
+  [See also](../other-doc.md)                     <!-- relative -->
+  [Changelog](docs/CHANGELOG.md)                  <!-- relative -->
+  [Notes](C:\Users\me\Documents\notes.md)         <!-- absolute -->
+  ```
+- **File transclusion** — embed another markdown file's full content inline using the `![[path]]` syntax (Obsidian-style). Both relative and absolute paths work:
+  ```markdown
+  ![[../shared/header.md]]                        <!-- relative -->
+  ![[snippets/installation.md]]                   <!-- relative -->
+  ![[C:\docs\shared\footer.md]]                   <!-- absolute -->
+  ```
+  Transclusions are resolved recursively (up to 10 levels). Images inside embedded files are re-resolved relative to their own location, so they always display correctly.
+
+### 🖼️ Local Image Rendering
+- Images referenced by **relative** or **absolute** paths are served securely via the built-in `/api/image` endpoint
+- Both Windows backslash and forward-slash paths are supported:
+  ```markdown
+  ![Logo](./images/logo.png)                      <!-- relative -->
+  ![Chart](../assets/chart.png)                   <!-- relative, parent dir -->
+  ![Banner](C:\Users\me\Pictures\banner.jpg)      <!-- absolute, backslash -->
+  ![Photo](/home/user/photos/shot.jpg)            <!-- absolute, forward-slash -->
+  ```
+- Remote images (`https://`) pass through unchanged
+
+### 🌍 Browser Compatibility
+
+The viewer UI runs in any modern browser. The `--browser` flag lets you specify exactly which one to use — useful when a corporate proxy or security policy restricts the default browser:
+
+| Browser | `--browser` value | Notes |
+|---------|-------------------|-------|
+| Google Chrome | `chrome` | Recommended; best Mermaid and PDF support |
+| Mozilla Firefox | `firefox` | Fully supported |
+| Microsoft Edge | `msedge` | Fully supported (Chromium-based) |
+| Brave | `brave` or full path | Fully supported (Chromium-based) |
+| Opera | `opera` | Fully supported |
+| Safari | `safari` | Fully supported (macOS only) |
+| Internet Explorer | `iexplore` | Basic rendering only — IE does not support ES6 modules; a "Browser Not Supported" notice is shown instead of a broken page |
+| Any other browser | Full path to executable | Pass the absolute path, e.g. `"C:/MyBrowser/browser.exe"` |
+
+> **Corporate environments:** if the system default browser is locked down (e.g. a hardened Internet Explorer), pass `--browser firefox` or `--browser msedge` to open in a modern browser instead.
+
 ### 🛠️ Productivity Tools
 - Copy all content with one click
 - Share via email
@@ -189,6 +245,38 @@ mdview --version
 [Link text](https://example.com)
 ![Alt text](https://example.com/image.png)
 ```
+
+### Local File Links
+
+Both relative and absolute paths to `.md` files open the target inside the viewer:
+
+```markdown
+[Changelog](CHANGELOG.md)                        <!-- same directory -->
+[Installation guide](docs/INSTALLATION.md)       <!-- subdirectory -->
+[Parent README](../README.md)                    <!-- parent directory -->
+[Notes](C:\Users\me\Documents\notes.md)          <!-- absolute path -->
+```
+
+### File Transclusion (Embed)
+
+Embed the full content of another markdown file inline using `![[path]]`:
+
+```markdown
+# My Document
+
+![[shared/header.md]]
+
+## Section 1
+...
+
+![[shared/footer.md]]
+```
+
+- Both **relative** and **absolute** paths are supported
+- Relative paths resolve from the current file's directory
+- Transclusions are resolved recursively (up to 10 levels deep)
+- Circular includes are detected and skipped
+- Images inside embedded files resolve correctly relative to their own location
 
 ### Code Blocks
 

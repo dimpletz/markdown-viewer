@@ -58,6 +58,16 @@ desktop.ini
 .coverage
 .pytest_cache/
 htmlcov/
+cov_output.txt
+
+# Generated CLI export artifacts (output of mdview — not source files)
+output.html
+readme.html
+readme.docx
+readme.pdf
+
+# Application logs
+logs/
 
 # Logs
 *.log

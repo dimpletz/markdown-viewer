@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-12
+
+### Added
+- `--browser` CLI argument: open the viewer in a specific browser by name (e.g. `firefox`, `chrome`, `msedge`, `iexplore`, `brave`, `safari`, `opera`) or by full executable path — useful in corporate environments with security restrictions
+  - Uses Python's `webbrowser` module as primary; falls back to a direct subprocess call for full executable paths not registered in the module
+  - Defaults to the system default browser (existing behaviour unchanged)
+
+### Fixed
+- Cross-browser compatibility: viewer now works correctly in Firefox, Edge, Brave, Safari, and Opera — not just Chrome
+  - `api.js`: `BACKEND_URL` now derived from `window.location.origin` instead of hardcoded `localhost:5000`, so any port works in any browser
+  - `browser-shim.js`: clipboard copy uses `document.execCommand` synchronously first (within the user-gesture context) with the async Clipboard API as a fallback — fixes silent failures in Firefox and Safari
+  - `main.css`: added Firefox 64+ scrollbar CSS (`scrollbar-width`, `scrollbar-color`) alongside existing `::-webkit-scrollbar` rules
+  - `index.html`: added `'unsafe-eval'` to CSP `script-src` (required by Mermaid's internal `new Function()` in Firefox); added a legacy browser detection block that shows a clear "Browser Not Supported" message for IE 11 and older instead of a broken white page
+
+### Security
+- Updated CDN pins: `dompurify` 3.0.0 → 3.2.3, `axios` 1.6.0 → 1.8.4, `marked` 11.0.0 → 15.0.0, `mermaid` 10.6.0 → 10.9.3
+- Removed unused unofficial NPM packages: `marked-mermaid` (never referenced in code) and `isomorphic-dompurify` (unused in browser context)
+
+### Changed
+- `pyproject.toml`: relaxed `^` version constraints on `chardet`, `python-docx`, `python-markdown-math`, `pytest`, `pytest-cov`, and `flake8` to `>=` to allow newer compatible versions
+- Electron `package.json` version aligned to `1.2.0`
+
+### Fixed (code quality)
+- `content_translator.py`: `results` list typed as `List[Optional[str]]` and joined with `"".join(r or "" for r in results)` — the previous `[None] * n` + `"".join(results)` would raise `TypeError` at runtime if any parallel slot remained unfilled
+- `file_handler.py`: `read_file`, `get_file_info`, and `list_markdown_files` signatures updated to `Union[str, Path]` to match their implementations and eliminate mypy type errors
+- Stripped 24 trailing-whitespace violations from Python source files (including inside CSS/HTML template strings that Black normally skips)
+- Added `.flake8` configuration file with `extend-ignore = E203,E501` to eliminate false positives from Black's slice formatting style
+- Removed generated CLI export artefacts (`output.html`, `readme.html`, `readme.docx`, `readme.pdf`, `cov_output.txt`) from repository and added them to `.gitignore`
+- Added `logs/` to `.gitignore`
+
 ## [1.1.3] - 2026-04-11
 
 ### Security

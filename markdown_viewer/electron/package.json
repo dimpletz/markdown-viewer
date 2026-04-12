@@ -1,6 +1,6 @@
 {
   "name": "markdown-viewer-electron",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Electron frontend for Markdown Viewer",
   "main": "main.js",
   "scripts": {
@@ -22,12 +22,12 @@
     "electron-builder": "^24.9.0"
   },
   "dependencies": {
-    "marked": "^11.0.0",
-    "mermaid": "^10.6.0",
-    "highlight.js": "^11.9.0",
+    "marked": "^15.0.0",
+    "mermaid": "^10.9.0",
+    "highlight.js": "^11.11.0",
     "katex": "^0.16.9",
-    "axios": "^1.6.0",
-    "dompurify": "^3.0.0"
+    "axios": "^1.8.0",
+    "dompurify": "^3.2.0"
   },
   "build": {
     "appId": "com.dimpletz.markdown-viewer",

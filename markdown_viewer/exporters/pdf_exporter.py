@@ -1,4 +1,4 @@
-"""
+﻿"""
 PDF exporter using playwright for high-quality PDF generation.
 """
 

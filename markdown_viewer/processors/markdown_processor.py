@@ -1,14 +1,20 @@
-"""
+﻿"""
 Markdown processor with support for extensions, code highlighting, and diagrams.
 """
 
 # pylint: disable=duplicate-code
 
-from typing import Dict, List, Any, Optional
+import os
+import re
+import logging
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Set
 
 import markdown
 from pymdownx import emoji
 from pygments.formatters import HtmlFormatter  # pylint: disable=no-name-in-module
+
+logger = logging.getLogger(__name__)
 
 
 class MarkdownProcessor:  # pylint: disable=too-few-public-methods
@@ -87,19 +93,127 @@ class MarkdownProcessor:  # pylint: disable=too-few-public-methods
         """Custom formatter for Mermaid diagrams."""
         return f'<div class="mermaid">\n{source}\n</div>'
 
+    _INCLUDE_PATTERN = re.compile(r"!\[\[([^\]]+)\]\]")
+    _MD_IMAGE_PATTERN = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+    _ALLOWED_INCLUDE_EXTENSIONS = {".md", ".markdown", ".mdown"}
+    _MAX_INCLUDE_DEPTH = 10
+
+    def _absolutize_md_image_paths(self, content: str, file_dir: Path) -> str:
+        """Rewrite relative markdown image paths to absolute paths.
+
+        This ensures that when an embedded file's content is inlined into a
+        parent document, its images still resolve correctly regardless of the
+        parent file's location.
+        """
+
+        def replace_img(match: re.Match) -> str:
+            alt = match.group(1)
+            src = match.group(2)
+            # Leave remote URLs, data URIs, and already-absolute paths unchanged
+            if src.startswith(
+                ("http://", "https://", "data:", "ftp://", "file://", "mailto:")
+            ) or os.path.isabs(src):
+                return match.group(0)
+            abs_path = (file_dir / src).resolve()
+            # Use forward slashes so the path is valid in a markdown src attribute
+            return f"![{alt}]({abs_path.as_posix()})"
+
+        return self._MD_IMAGE_PATTERN.sub(replace_img, content)
+
+    def _resolve_includes(
+        self,
+        content: str,
+        base_dir: Path,
+        allowed_base: Optional[Path] = None,
+        visited: Optional[Set[str]] = None,
+        depth: int = 0,
+    ) -> str:
+        """Resolve ![[file.md]] transclusion syntax, recursively.
+
+        Args:
+            content: Markdown source text.
+            base_dir: Directory used to resolve relative include paths.
+            allowed_base: If set, all resolved paths must remain inside this directory tree.
+            visited: Set of already-resolved absolute paths (cycle detection).
+            depth: Current recursion depth.
+
+        Returns:
+            Markdown text with all includes expanded.
+        """
+        if depth >= self._MAX_INCLUDE_DEPTH:
+            return content
+
+        if visited is None:
+            visited = set()
+
+        def replace_include(match: re.Match) -> str:
+            raw_path = match.group(1).strip()
+            resolved = (base_dir / raw_path).resolve()
+
+            # Security: must stay inside the allowed directory tree
+            if allowed_base is not None:
+                try:
+                    resolved.relative_to(allowed_base)
+                except ValueError:
+                    logger.warning("Include blocked (path traversal): %s", resolved)
+                    return f"> ⚠️ Include blocked: `{raw_path}`\n"
+
+            # Only allow markdown file types
+            if resolved.suffix.lower() not in self._ALLOWED_INCLUDE_EXTENSIONS:
+                return f"> ⚠️ Include ignored (not a markdown file): `{raw_path}`\n"
+
+            if not resolved.exists() or not resolved.is_file():
+                return f"> ⚠️ Include not found: `{raw_path}`\n"
+
+            abs_str = str(resolved)
+            if abs_str in visited:
+                return f"> ⚠️ Circular include skipped: `{raw_path}`\n"
+
+            visited.add(abs_str)
+            try:
+                included_text = resolved.read_text(encoding="utf-8")
+                # Rewrite relative image paths to absolute before inlining so they
+                # resolve correctly when rendered in the context of the parent file.
+                included_text = self._absolutize_md_image_paths(included_text, resolved.parent)
+                included_text = self._resolve_includes(
+                    included_text,
+                    resolved.parent,
+                    allowed_base=allowed_base,
+                    visited=visited,
+                    depth=depth + 1,
+                )
+            except OSError as exc:
+                logger.warning("Could not read include file %s: %s", resolved, exc)
+                return f"> ⚠️ Include unreadable: `{raw_path}`\n"
+            finally:
+                visited.discard(abs_str)
+
+            return included_text
+
+        return self._INCLUDE_PATTERN.sub(replace_include, content)
+
     def process(self, content: str, options: Optional[Dict[str, Any]] = None) -> str:
         """
         Process markdown content to HTML.
 
         Args:
             content: Markdown content string
-            options: Optional dictionary of processing options
+            options: Optional dictionary of processing options. Recognised keys:
+                base_dir (str): Absolute path used to resolve ![[file.md]] includes.
+                allowed_base (str): Root directory that includes may not escape.
 
         Returns:
             HTML string
         """
         if options is None:
             options = {}
+
+        base_dir_str = options.get("base_dir", "")
+        if base_dir_str:
+            base_dir = Path(base_dir_str)
+            allowed_base_str = options.get("allowed_base", "")
+            allowed_base = Path(allowed_base_str) if allowed_base_str else None
+            content = self._resolve_includes(content, base_dir, allowed_base=allowed_base)
 
         # Create markdown instance with extensions
         md = markdown.Markdown(
@@ -145,47 +259,47 @@ class MarkdownProcessor:  # pylint: disable=too-few-public-methods
             padding: 20px;
             color: #333;
         }}
-        
+
         pre {{
             background-color: #272822;
             padding: 15px;
             border-radius: 5px;
             overflow-x: auto;
         }}
-        
+
         code {{
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         }}
-        
+
         img {{
             max-width: 100%;
             height: auto;
         }}
-        
+
         table {{
             border-collapse: collapse;
             width: 100%;
             margin: 20px 0;
         }}
-        
+
         th, td {{
             border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
         }}
-        
+
         th {{
             background-color: #f5f5f5;
             font-weight: bold;
         }}
-        
+
         blockquote {{
             border-left: 4px solid #ccc;
             margin: 20px 0;
             padding-left: 20px;
             color: #666;
         }}
-        
+
         {css}
     </style>
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>

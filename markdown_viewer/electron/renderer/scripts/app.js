@@ -135,13 +135,15 @@ class MarkdownViewerApp {
                 this.currentHTML = result.html || '';
 
                 if (result.html) {
-                    // Backend already rendered — display directly
+                    // Backend renders with /api/image?path=... URLs for local images.
+                    // Relative /api/image URLs pass DOMPurify natively.
                     const sanitized = DOMPurify.sanitize(result.html, {
                         ADD_TAGS: ['mermaid'],
-                        ADD_ATTR: ['class', 'id', 'href']
+                        ADD_ATTR: ['class', 'id', 'href', 'src']
                     });
                     this.currentHTML = sanitized;
-                    this.preview.innerHTML = this.currentHTML;
+                    this.preview.innerHTML = sanitized;
+                    await this._resolveElectronImages(this.preview);
                     await window.MarkdownRenderer.renderMermaidDiagrams(this.preview);
                     window.MarkdownRenderer.renderMath(this.preview);
                 } else {
@@ -196,6 +198,84 @@ class MarkdownViewerApp {
         }
     }
 
+    /**
+     * Sanitize HTML with DOMPurify while preserving embedded data:image/ URIs.
+     * DOMPurify strips data: URIs from src attributes regardless of hooks, so we
+     * swap them out for harmless placeholder attributes before sanitizing, then
+     * restore them onto the real img elements after setting innerHTML.
+     */
+    _sanitizeHTML(html, container) {
+        // 1. Extract data:image/ URIs and replace with indexed placeholders
+        const uriMap = new Map();
+        let idx = 0;
+        const htmlWithPlaceholders = html.replace(/src="(data:image\/[^"]*)"/g, (_, uri) => {
+            const key = `__img${idx++}__`;
+            uriMap.set(key, uri);
+            return `data-imgsrc="${key}"`;
+        });
+
+        // 2. Sanitize the placeholder HTML (no data: URIs to trip DOMPurify)
+        const sanitized = DOMPurify.sanitize(htmlWithPlaceholders, {
+            ADD_TAGS: ['mermaid'],
+            ADD_ATTR: ['class', 'id', 'href', 'src', 'data-imgsrc']
+        });
+
+        // 3. Write to DOM then restore real src values
+        container.innerHTML = sanitized;
+        if (uriMap.size > 0) {
+            container.querySelectorAll('img[data-imgsrc]').forEach(img => {
+                const key = img.getAttribute('data-imgsrc');
+                if (uriMap.has(key)) {
+                    img.src = uriMap.get(key);
+                    img.removeAttribute('data-imgsrc');
+                }
+            });
+        }
+
+        return sanitized;
+    }
+
+    /**
+     * Convert relative /api/image paths returned by the backend into absolute
+     * http://localhost:PORT/api/image URLs that the browser can actually load.
+     */
+    _absolutizeImageUrls(html) {
+        const backendUrl = (window.MarkdownViewerAPI.getBackendUrl && window.MarkdownViewerAPI.getBackendUrl())
+            || `http://localhost:${window.electronAPI?.getEnv('BACKEND_PORT') || 5000}`;
+        return html.replace(/src="(\/api\/image\?[^"]*)"/g, `src="${backendUrl}$1"`);
+    }
+
+    /**
+     * In Electron, resolve img elements whose src points to /api/image or the
+     * backend HTTP URL by converting them to inline base64 data URIs via IPC.
+     * This bypasses any network issues and DOMPurify URL filtering.
+     * In browser mode (no electronAPI) this is a no-op.
+     */
+    async _resolveElectronImages(container) {
+        if (typeof window.electronAPI === 'undefined') return;
+
+        const API_IMG_RE = /\/api\/image\?path=([^&"]*)/;
+        const imgs = Array.from(container.querySelectorAll('img[src]'));
+
+        await Promise.all(imgs.map(async (img) => {
+            const src = img.getAttribute('src') || '';
+            const m = API_IMG_RE.exec(src);
+            if (!m) return;
+
+            const localPath = decodeURIComponent(m[1]);
+            try {
+                const result = await window.electronAPI.invoke('read-image-as-dataurl', localPath);
+                if (result.success) {
+                    img.src = result.dataUrl;
+                } else {
+                    console.warn('Image load failed:', localPath, result.error);
+                }
+            } catch (err) {
+                console.warn('Image IPC error:', localPath, err);
+            }
+        }));
+    }
+
     async renderMarkdown() {
         try {
             this.showLoading();
@@ -204,7 +284,12 @@ class MarkdownViewerApp {
             // Use the backend for full-featured rendering (TOC, emojis, diagrams, math)
             let html;
             try {
-                const result = await window.MarkdownViewerAPI.renderMarkdown(this.currentMarkdown);
+                // Pass the directory of the current file so the backend can resolve relative image paths
+                const basePath = this.currentFile ? window.path.dirname(this.currentFile) : '';
+                const result = await window.MarkdownViewerAPI.renderMarkdown(
+                    this.currentMarkdown,
+                    basePath ? { basePath } : {}
+                );
                 html = result.html || '';
             } catch (apiError) {
                 // Fallback to client-side renderer if backend is unavailable
@@ -212,16 +297,18 @@ class MarkdownViewerApp {
                 html = await window.MarkdownRenderer.render(this.currentMarkdown);
             }
 
-            // SECURITY: Sanitize HTML — allow class/id attrs needed for TOC anchors and diagrams
+            // SECURITY: Sanitize HTML — allow class/id attrs needed for TOC anchors and diagrams.
+            // Backend produces /api/image?path=... URLs for images (relative, pass DOMPurify).
             const sanitized = DOMPurify.sanitize(html, {
                 ADD_TAGS: ['mermaid'],
-                ADD_ATTR: ['class', 'id', 'href']
+                ADD_ATTR: ['class', 'id', 'href', 'src']
             });
-
-            // Only update the DOM once we have a valid result
             this.currentHTML = sanitized;
-            this.preview.innerHTML = this.currentHTML;
-            
+            this.preview.innerHTML = sanitized;
+
+            // In Electron: convert /api/image?... srcs to inline data URIs via IPC
+            await this._resolveElectronImages(this.preview);
+
             // Render mermaid diagrams
             await window.MarkdownRenderer.renderMermaidDiagrams(this.preview);
             

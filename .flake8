@@ -1,0 +1,17 @@
+[flake8]
+# Max line length to match [tool.black] in pyproject.toml
+max-line-length = 120
+# E203: whitespace before ':' — triggered by Black's slice formatting (x[a : b])
+# E501: line too long — handled by Black; flake8 can produce false positives on long strings
+extend-ignore = E203,E501
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist,
+    htmlcov,
+    .pytest_cache,
+    markdown_viewer/temp,
+    markdown_viewer/uploads

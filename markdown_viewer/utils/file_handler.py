@@ -1,10 +1,10 @@
-"""
+﻿"""
 File handler for reading and managing markdown files.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from pathlib import Path
+from typing import Dict, Any, List, Optional, Union
 
 import chardet
 
@@ -22,7 +22,7 @@ class FileHandler:
         """Initialize file handler."""
         self.supported_extensions = [".md", ".markdown", ".mdown", ".mkd", ".mkdn"]
 
-    def read_file(self, file_path: str) -> str:
+    def read_file(self, file_path: Union[str, Path]) -> str:
         """
         Read a markdown file with automatic encoding detection.
 
@@ -77,7 +77,7 @@ class FileHandler:
         """Check if file is a markdown file."""
         return Path(file_path).suffix.lower() in self.supported_extensions
 
-    def get_file_info(self, file_path: str) -> Optional[Dict[str, Any]]:
+    def get_file_info(self, file_path: Union[str, Path]) -> Optional[Dict[str, Any]]:
         """Get information about a file."""
         file_path = Path(file_path)
 
@@ -94,7 +94,9 @@ class FileHandler:
             "is_markdown": self.is_markdown_file(file_path),
         }
 
-    def list_markdown_files(self, directory: str, recursive: bool = False) -> List[str]:
+    def list_markdown_files(
+        self, directory: Union[str, Path], recursive: bool = False
+    ) -> List[str]:
         """
         List all markdown files in a directory.
 

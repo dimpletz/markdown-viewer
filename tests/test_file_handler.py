@@ -4,6 +4,7 @@
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -111,3 +112,46 @@ def test_list_markdown_files_not_a_dir_raises(file_handler, tmp_path):
 
     with pytest.raises(ValueError, match="Not a directory"):
         file_handler.list_markdown_files(str(md_file))
+
+
+def test_read_file_latin1_fallback(file_handler, tmp_path):
+    """read_file() falls back to encoding detection when UTF-8 decoding fails."""
+    # Write bytes that are valid Latin-1 but not valid UTF-8
+    # 0x80-0xBF alone (without UTF-8 continuation) cause UnicodeDecodeError in 'strict' mode
+    latin1_bytes = "Caf\xe9 au lait\n".encode("latin-1")
+    md_file = tmp_path / "latin1.md"
+    md_file.write_bytes(latin1_bytes)
+
+    # Should not raise; chardet or fallback reads the file
+    content = file_handler.read_file(str(md_file))
+    assert "Caf" in content
+
+
+def test_read_file_low_confidence_detection_falls_back_to_utf8(file_handler, tmp_path):
+    """read_file() uses UTF-8 with errors='replace' when chardet confidence is low."""
+    latin1_bytes = "Hello \xcf world\n".encode("latin-1")
+    md_file = tmp_path / "ambiguous.md"
+    md_file.write_bytes(latin1_bytes)
+
+    with patch(
+        "markdown_viewer.utils.file_handler.chardet.detect",
+        return_value={"encoding": None, "confidence": 0.3},
+    ):
+        content = file_handler.read_file(str(md_file))
+
+    assert "Hello" in content
+
+
+def test_read_file_detected_encoding_lu_error_falls_back(file_handler, tmp_path):
+    """read_file() falls back to UTF-8 replace when detected encoding is invalid."""
+    latin1_bytes = "Caf\xe9\n".encode("latin-1")
+    md_file = tmp_path / "badenc.md"
+    md_file.write_bytes(latin1_bytes)
+
+    with patch(
+        "markdown_viewer.utils.file_handler.chardet.detect",
+        return_value={"encoding": "nonexistent-encoding", "confidence": 0.99},
+    ):
+        content = file_handler.read_file(str(md_file))
+
+    assert content is not None

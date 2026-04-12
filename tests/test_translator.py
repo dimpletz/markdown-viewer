@@ -147,3 +147,133 @@ def test_translate_falls_back_to_original_when_all_retries_fail(translator):
         result = translator.translate("Hello world", target_lang="es")
 
     assert "Hello world" in result
+
+
+# ---------------------------------------------------------------------------
+# _mymemory_request
+# ---------------------------------------------------------------------------
+
+
+def test_mymemory_request_success():
+    """_mymemory_request returns translated text on a 200 response."""
+    import json
+    from io import BytesIO
+    from unittest.mock import MagicMock, patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_request
+
+    fake_response_data = {"responseStatus": 200, "responseData": {"translatedText": "Hola"}}
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(fake_response_data).encode()
+    mock_resp.__enter__ = lambda s: s
+    mock_resp.__exit__ = MagicMock(return_value=False)
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = _mymemory_request("Hello", "en-GB", "es-ES")
+
+    assert result == "Hola"
+
+
+def test_mymemory_request_non_200_returns_original():
+    """_mymemory_request returns original text when responseStatus != 200."""
+    import json
+    from unittest.mock import MagicMock, patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_request
+
+    fake_response_data = {"responseStatus": 429, "responseData": {"translatedText": None}}
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps(fake_response_data).encode()
+    mock_resp.__enter__ = lambda s: s
+    mock_resp.__exit__ = MagicMock(return_value=False)
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        result = _mymemory_request("Hello", "en-GB", "es-ES")
+
+    assert result == "Hello"
+
+
+def test_mymemory_request_timeout_raises():
+    """_mymemory_request raises TimeoutError when the socket times out."""
+    import socket
+    from unittest.mock import patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_request
+
+    with patch("urllib.request.urlopen", side_effect=socket.timeout("timed out")):
+        with pytest.raises(TimeoutError):
+            _mymemory_request("Hello", "en-GB", "es-ES")
+
+
+# ---------------------------------------------------------------------------
+# _mymemory_translate edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_mymemory_translate_empty_text():
+    """_mymemory_translate returns empty text immediately without API call."""
+    from unittest.mock import patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_translate
+
+    with patch(
+        "markdown_viewer.translators.content_translator._mymemory_request"
+    ) as mock_req:
+        result = _mymemory_translate("   ", "en-GB", "es-ES")
+
+    assert result.strip() == ""
+    mock_req.assert_not_called()
+
+
+def test_mymemory_translate_short_text_single_request():
+    """_mymemory_translate calls _mymemory_request once for short text."""
+    from unittest.mock import patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_translate
+
+    with patch(
+        "markdown_viewer.translators.content_translator._mymemory_request",
+        return_value="Hola",
+    ) as mock_req:
+        result = _mymemory_translate("Hello", "en-GB", "es-ES")
+
+    mock_req.assert_called_once_with("Hello", "en-GB", "es-ES")
+    assert result == "Hola"
+
+
+def test_mymemory_translate_single_long_sentence():
+    """_mymemory_translate hard-splits a single sentence exceeding 500 chars."""
+    from unittest.mock import patch
+
+    from markdown_viewer.translators.content_translator import _mymemory_translate
+
+    long_sentence = "X" * 600  # one sentence, no split points, longer than 500
+    chunks_seen = []
+
+    def fake_request(text, _s, _t):
+        chunks_seen.append(len(text))
+        return text
+
+    with patch(
+        "markdown_viewer.translators.content_translator._mymemory_request",
+        side_effect=fake_request,
+    ):
+        _mymemory_translate(long_sentence, "en-GB", "es-ES")
+
+    assert len(chunks_seen) >= 2
+    assert all(n <= 500 for n in chunks_seen)
+
+
+# ---------------------------------------------------------------------------
+# translate() TimeoutError propagation
+# ---------------------------------------------------------------------------
+
+
+def test_translate_timeout_error_propagates(translator):
+    """translate() re-raises TimeoutError when a chunk times out on the last retry."""
+    with patch(
+        "markdown_viewer.translators.content_translator._mymemory_translate",
+        side_effect=TimeoutError("too slow"),
+    ):
+        with pytest.raises(TimeoutError):
+            translator.translate("Hello world", target_lang="es")
