@@ -424,6 +424,26 @@ def test_translate_exception_returns_500(client):
     assert response.status_code == 500
     data = response.get_json()
     assert data["success"] is False
+    # Must not leak internal exception details (e.g. the raw error message)
+    error_str = str(data)
+    assert "network error" not in error_str
+    assert "RuntimeError" not in error_str
+
+
+def test_translate_exception_error_message_is_generic(client):
+    """POST /api/translate 500 response returns a generic error, not the exception string."""
+    with patch("markdown_viewer.routes.ContentTranslator") as mock_cls:
+        mock_cls.return_value.get_supported_languages.return_value = {"fr": "French"}
+        mock_cls.return_value.translate.side_effect = OSError("disk I/O failure - secret path")
+
+        response = client.post(
+            "/api/translate",
+            json={"content": "Hello", "source": "en", "target": "fr"},
+        )
+    assert response.status_code == 500
+    raw = response.get_data(as_text=True)
+    assert "disk I/O failure" not in raw
+    assert "secret path" not in raw
 
 
 # ---------------------------------------------------------------------------
@@ -481,8 +501,8 @@ def test_rewrite_image_urls_relative(tmp_path):
     img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
     html = '<img src="img.png" alt="test">'
     result = _rewrite_image_urls(html, str(tmp_path))
-    assert '/api/image?path=' in result
-    assert 'img.png' in result
+    assert "/api/image?path=" in result
+    assert "img.png" in result
 
 
 def test_rewrite_image_urls_absolute(tmp_path):
@@ -493,7 +513,7 @@ def test_rewrite_image_urls_absolute(tmp_path):
     img.write_bytes(b"\xff\xd8\xff" + b"\x00" * 5)
     html = f'<img src="{img}" alt="photo">'
     result = _rewrite_image_urls(html, str(tmp_path))
-    assert '/api/image?path=' in result
+    assert "/api/image?path=" in result
 
 
 def test_rewrite_image_urls_skips_http(tmp_path):
@@ -561,7 +581,7 @@ def test_rewrite_md_links_relative(tmp_path):
     child = tmp_path / "child.md"
     html = f'<a href="child.md">child</a>'
     result = _rewrite_md_links(html, str(tmp_path))
-    assert '/?file=' in result
+    assert "/?file=" in result
     assert "child.md" not in result.split("/?file=")[0].split('href="')[-1]
 
 
@@ -572,7 +592,7 @@ def test_rewrite_md_links_absolute(tmp_path):
     abs_path = str(tmp_path / "notes.md")
     html = f'<a href="{abs_path}">notes</a>'
     result = _rewrite_md_links(html, str(tmp_path))
-    assert '/?file=' in result
+    assert "/?file=" in result
 
 
 def test_rewrite_md_links_remote_unchanged(tmp_path):
@@ -616,7 +636,7 @@ def test_rewrite_md_links_fragment_encoded(tmp_path):
 
     html = '<a href="doc.md#section-name">doc</a>'
     result = _rewrite_md_links(html, str(tmp_path))
-    assert '/?file=' in result
+    assert "/?file=" in result
     # Fragment must remain in the rewritten URL
     assert "#" in result
 
@@ -677,8 +697,8 @@ def test_render_client_base_dir_is_stripped(client, tmp_path):
         json={
             "content": md,
             "options": {
-                "base_dir": str(tmp_path),    # client-supplied – must be stripped
-                "basePath": "",               # no legitimate basePath
+                "base_dir": str(tmp_path),  # client-supplied – must be stripped
+                "basePath": "",  # no legitimate basePath
             },
         },
     )
@@ -702,7 +722,7 @@ def test_render_client_allowed_base_is_stripped(client, tmp_path):
             "content": md,
             "options": {
                 "base_dir": str(tmp_path),
-                "allowed_base": "/",          # client tries to widen scope
+                "allowed_base": "/",  # client tries to widen scope
                 "basePath": "",
             },
         },
@@ -828,4 +848,3 @@ def test_generic_exception_handler(app, client):
     with patch("markdown_viewer.routes.markdown_processor.process", side_effect=ValueError("x")):
         response = client.post("/api/render", json={"content": "# Hello"})
     assert response.status_code in (400, 500)
-

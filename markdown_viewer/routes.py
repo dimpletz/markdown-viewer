@@ -99,7 +99,9 @@ def _rewrite_image_urls(html: str, base_dir: str) -> str:
     def replace_src(match: re.Match) -> str:
         src = match.group(1)
         # Leave remote URLs, existing data URIs, and /api/image paths unchanged
-        if src.startswith(("http://", "https://", "data:", "ftp://", "file://", "mailto:", "/api/image")):
+        if src.startswith(
+            ("http://", "https://", "data:", "ftp://", "file://", "mailto:", "/api/image")
+        ):
             return match.group(0)
 
         # URL-decode first so %20 → space, backslash paths from markdown → real path
@@ -352,7 +354,9 @@ def render_markdown() -> Tuple[Dict[str, Any], int]:
         base_path = options.get("basePath", "")
         if base_path:
             options["base_dir"] = base_path
-            allowed_base = Path(current_app.config.get("ALLOWED_DOCUMENTS_DIR", Path.home())).resolve()
+            allowed_base = Path(
+                current_app.config.get("ALLOWED_DOCUMENTS_DIR", Path.home())
+            ).resolve()
             options["allowed_base"] = str(allowed_base)
 
         logger.info("[%s] Rendering markdown, size: %s bytes", g.request_id, len(markdown_content))

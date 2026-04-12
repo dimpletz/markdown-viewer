@@ -246,6 +246,46 @@ def test_generic_exception_handler_format(tmp_path):
     assert data["success"] is False
 
 
+# ---------------------------------------------------------------------------
+# HTTP security headers
+# ---------------------------------------------------------------------------
+
+
+def test_security_headers_present_on_api_response(tmp_path):
+    """API responses include all required HTTP security headers."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert "nosniff" in response.headers.get("X-Content-Type-Options", "")
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
+    assert "strict-origin-when-cross-origin" in response.headers.get("Referrer-Policy", "")
+    assert "camera=()" in response.headers.get("Permissions-Policy", "")
+    csp = response.headers.get("Content-Security-Policy", "")
+    assert "default-src" in csp
+    assert "cdn.jsdelivr.net" in csp
+
+
+def test_security_headers_present_on_ui_response(tmp_path):
+    """UI responses (GET /) also include security headers."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
+    assert "camera=()" in response.headers.get("Permissions-Policy", "")
+
+
+def test_index_route_has_no_store_cache_control(tmp_path):
+    """GET / sets Cache-Control: no-store, no-cache, must-revalidate."""
+    client = _make_test_client(tmp_path)
+    response = client.get("/")
+    assert response.status_code == 200
+    cc = response.headers.get("Cache-Control", "")
+    assert "no-store" in cc
+    assert "no-cache" in cc
+    assert "must-revalidate" in cc
+
+
 def test_configure_logging_creates_log_dir(tmp_path, monkeypatch):
     """configure_logging() creates the logs/ dir and attaches a file handler when not in debug."""
     import os

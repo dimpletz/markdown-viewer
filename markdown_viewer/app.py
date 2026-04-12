@@ -166,9 +166,9 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
             (
                 "default-src 'self'; "
                 "script-src 'self' 'unsafe-eval' 'unsafe-inline' "
-                    "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+                "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
                 "style-src 'self' 'unsafe-inline' "
-                    "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+                "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
                 "img-src 'self' data: https:; "
                 "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
                 "connect-src 'self' http://localhost:* http://127.0.0.1:*;"

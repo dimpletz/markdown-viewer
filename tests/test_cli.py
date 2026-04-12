@@ -741,3 +741,85 @@ def test_export_to_pdf_output_is_directory(tmp_path):
 
     assert result.parent == out_dir
     assert result.suffix == ".pdf"
+
+
+# ---------------------------------------------------------------------------
+# --serve flag and _open_flask_dashboard
+# ---------------------------------------------------------------------------
+
+
+def test_main_serve_flag_calls_dashboard():
+    """main() with --serve calls _open_flask_dashboard and returns 0."""
+    from unittest.mock import patch
+
+    from markdown_viewer.cli import main
+
+    with (
+        patch("sys.argv", ["mdview", "--serve"]),
+        patch("markdown_viewer.cli._open_flask_dashboard") as mock_dash,
+    ):
+        result = main()
+
+    assert result == 0
+    mock_dash.assert_called_once()
+
+
+def test_main_serve_flag_with_file_warns_and_opens_dashboard(tmp_path, capsys):
+    """main() with --serve and a file arg prints a warning, ignores file, opens dashboard."""
+    from unittest.mock import patch
+
+    from markdown_viewer.cli import main
+
+    md_file = tmp_path / "test.md"
+    md_file.write_text("# Test", encoding="utf-8")
+
+    with (
+        patch("sys.argv", ["mdview", str(md_file), "--serve"]),
+        patch("markdown_viewer.cli._open_flask_dashboard") as mock_dash,
+    ):
+        result = main()
+
+    assert result == 0
+    mock_dash.assert_called_once()
+    captured = capsys.readouterr()
+    assert "--serve" in captured.out or "dashboard" in captured.out.lower()
+
+
+def test_main_no_args_interactive_opens_dashboard():
+    """main() with no file in an interactive terminal calls _open_flask_dashboard."""
+    from unittest.mock import patch
+
+    from markdown_viewer.cli import main
+
+    with (
+        patch("sys.argv", ["mdview"]),
+        patch("sys.stdout.isatty", return_value=True),
+        patch("markdown_viewer.cli._open_flask_dashboard") as mock_dash,
+    ):
+        result = main()
+
+    assert result == 0
+    mock_dash.assert_called_once()
+
+
+def test_open_flask_dashboard_opens_url():
+    """_open_flask_dashboard opens the dashboard URL in the browser."""
+    from unittest.mock import MagicMock, patch
+
+    from markdown_viewer.cli import _open_flask_dashboard
+
+    # Simulate server already up so no subprocess is spawned
+    mock_conn = MagicMock()
+    mock_conn.getresponse.return_value.status = 200
+
+    # Force the non-Windows code path so webbrowser.open is called deterministically
+    with (
+        patch("http.client.HTTPConnection", return_value=mock_conn),
+        patch("sys.platform", "linux"),
+        patch("webbrowser.open") as mock_browser,
+    ):
+        _open_flask_dashboard(port=5000, browser=None)
+
+    mock_browser.assert_called_once()
+    url = mock_browser.call_args[0][0]
+    assert "localhost:5000" in url

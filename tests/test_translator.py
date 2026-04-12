@@ -216,9 +216,7 @@ def test_mymemory_translate_empty_text():
 
     from markdown_viewer.translators.content_translator import _mymemory_translate
 
-    with patch(
-        "markdown_viewer.translators.content_translator._mymemory_request"
-    ) as mock_req:
+    with patch("markdown_viewer.translators.content_translator._mymemory_request") as mock_req:
         result = _mymemory_translate("   ", "en-GB", "es-ES")
 
     assert result.strip() == ""

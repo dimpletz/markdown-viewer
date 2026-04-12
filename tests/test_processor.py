@@ -6,6 +6,7 @@ from pathlib import Path
 
 from markdown_viewer.processors.markdown_processor import MarkdownProcessor
 
+
 @pytest.fixture
 def processor():
     """Create a markdown processor instance."""
@@ -213,7 +214,5 @@ def test_process_with_base_dir_resolves_includes(processor, tmp_path):
     child = tmp_path / "note.md"
     child.write_text("## Included Note\n", encoding="utf-8")
     content = "# Doc\n\n![[note.md]]\n"
-    html = processor.process(
-        content, {"base_dir": str(tmp_path), "allowed_base": str(tmp_path)}
-    )
+    html = processor.process(content, {"base_dir": str(tmp_path), "allowed_base": str(tmp_path)})
     assert "Included Note" in html
