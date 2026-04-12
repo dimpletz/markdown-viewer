@@ -158,6 +158,28 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
         app.logger.info(
             "[%s] %s %s %s", request_id, request.method, request.path, response.status_code
         )
+        # Security headers — applied to every response.
+        # CSP is intentionally permissive for localhost-only desktop tool usage;
+        # tighten if ever exposed to a network.
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-eval' 'unsafe-inline' "
+                    "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+                "style-src 'self' 'unsafe-inline' "
+                    "https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+                "img-src 'self' data: https:; "
+                "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+                "connect-src 'self' http://localhost:* http://127.0.0.1:*;"
+            ),
+        )
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
         return response
 
     # Register blueprints
@@ -171,7 +193,9 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
 
     @ui_bp.route("/")
     def index():
-        return send_from_directory(renderer_dir, "index.html")
+        resp = make_response(send_from_directory(renderer_dir, "index.html"))
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        return resp
 
     @ui_bp.route("/styles/<path:filename>")
     def renderer_styles(filename):

@@ -302,14 +302,44 @@ class MarkdownProcessor:  # pylint: disable=too-few-public-methods
 
         {css}
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css">
 </head>
 <body>
     {content}
     <script>
-        mermaid.initialize({{ startOnLoad: true, theme: 'default' }});
+        (async function() {{
+            var diagrams = document.querySelectorAll('.mermaid');
+            if (!diagrams.length) return;
+            function decodeEntities(str) {{
+                return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+                          .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            }}
+            mermaid.initialize({{
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                suppressErrors: true
+            }});
+            for (var i = 0; i < diagrams.length; i++) {{
+                var el = diagrams[i];
+                var source = decodeEntities((el.textContent || '').trim());
+                el.textContent = source;
+                try {{
+                    var id = 'mermaid-' + Date.now() + '-' + i;
+                    var result = await mermaid.render(id, source);
+                    el.innerHTML = result.svg;
+                }} catch (e) {{
+                    var escaped = source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    el.innerHTML = '<details style="border:1px solid #fca;background:#fff8f5;border-radius:4px;padding:8px">'
+                        + '<summary style="cursor:pointer;color:#c60;font-weight:bold">'
+                        + '\u26a0 Diagram could not be rendered (click to view source)</summary>'
+                        + '<pre style="margin:8px 0 0;overflow:auto;font-size:13px">' + escaped + '</pre></details>';
+                    console.warn('Mermaid render failed:', e.message || e);
+                }}
+            }}
+        }})();
     </script>
 </body>
 </html>"""

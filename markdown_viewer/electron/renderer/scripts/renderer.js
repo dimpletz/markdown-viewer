@@ -38,12 +38,13 @@ class MarkdownRenderer {
             }
         });
 
-        // Configure Mermaid with strict security
+        // Configure Mermaid for cross-version compatibility (v8/v9/v10/v11 syntax)
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
             securityLevel: 'antiscript',
-            fontFamily: 'inherit'
+            fontFamily: 'inherit',
+            suppressErrors: true
         });
     }
 
@@ -90,28 +91,53 @@ class MarkdownRenderer {
     }
 
     /**
-     * Render mermaid diagrams in DOM
+     * Normalize diagram source for cross-version compatibility.
+     * Decodes HTML entities that may be introduced by the markdown pipeline
+     * and strips leading/trailing whitespace.
+     */
+    normalizeMermaidSource(source) {
+        return source
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .trim();
+    }
+
+    /**
+     * Render mermaid diagrams in DOM with per-diagram error isolation.
+     * Each diagram is rendered independently so a single bad diagram
+     * does not prevent the others from displaying.
      */
     async renderMermaidDiagrams(container) {
         const mermaidElements = container.querySelectorAll('.mermaid');
         if (mermaidElements.length === 0) return;
 
-        // Reset any previously rendered elements so Mermaid re-processes them
-        mermaidElements.forEach(el => {
+        let counter = 0;
+        for (const el of mermaidElements) {
+            // Restore and normalise the raw source text
+            const rawSource = el.textContent || el.innerText || '';
+            const source = this.normalizeMermaidSource(rawSource);
+            el.textContent = source;
             el.removeAttribute('data-processed');
-            el.innerHTML = el.textContent; // restore raw diagram source
-        });
 
-        try {
-            // Use Mermaid v10 run() API — it manages IDs and rendering internally
-            await mermaid.run({ nodes: Array.from(mermaidElements) });
-        } catch (error) {
-            console.error('Mermaid render error:', error);
-            mermaidElements.forEach(el => {
-                if (!el.querySelector('svg')) {
-                    el.innerHTML = `<pre style="color: red; padding: 1em;">Diagram error: ${error.message}</pre>`;
-                }
-            });
+            try {
+                const id = `mermaid-${Date.now()}-${counter++}`;
+                const { svg } = await mermaid.render(id, source);
+                el.innerHTML = svg;
+            } catch (error) {
+                console.warn('Mermaid diagram render failed:', error.message || error);
+                const escaped = source
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                el.innerHTML =
+                    `<details style="border:1px solid #fca;background:#fff8f5;border-radius:4px;padding:8px">` +
+                    `<summary style="cursor:pointer;color:#c60;font-weight:bold">` +
+                    `\u26a0 Diagram could not be rendered (click to view source)</summary>` +
+                    `<pre style="margin:8px 0 0;overflow:auto;font-size:13px">${escaped}</pre></details>`;
+            }
         }
     }
 

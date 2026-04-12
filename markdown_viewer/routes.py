@@ -688,7 +688,7 @@ def translate_content() -> Tuple[Dict[str, Any], int]:
         req_id = getattr(g, "request_id", "unknown")
         logger.error("[%s] Error translating: %s", req_id, e, exc_info=True)
         return (
-            jsonify({"success": False, "error": {"message": str(e), "type": type(e).__name__}}),
+            jsonify({"success": False, "error": {"message": "Internal server error"}}),
             500,
         )
 

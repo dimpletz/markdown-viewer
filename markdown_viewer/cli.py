@@ -79,7 +79,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <title>{title}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css">
     <style>
@@ -282,12 +282,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <script>
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {{
-            // Initialize Mermaid with proper configuration
+            // Initialize Mermaid for cross-version compatibility (v8/v9/v10/v11 syntax)
             mermaid.initialize({{
-                startOnLoad: true,
+                startOnLoad: false,
                 theme: 'default',
-                securityLevel: 'strict',
-                fontFamily: 'monospace'
+                securityLevel: 'loose',
+                fontFamily: 'monospace',
+                suppressErrors: true
             }});
 
             // Render KaTeX math
@@ -314,14 +315,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 }}
             }});
 
-            // Force Mermaid to render diagrams
-            if (typeof mermaid !== 'undefined') {{
-                try {{
-                    mermaid.contentLoaded();
-                }} catch (e) {{
-                    console.error('Mermaid render error:', e);
+            // Render each Mermaid diagram individually for cross-version compatibility
+            // Uses mermaid.render() so each diagram is isolated — one failure won't block others
+            (async function() {{
+                function decodeEntities(str) {{
+                    return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+                              .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
                 }}
-            }}
+                var diagrams = document.querySelectorAll('.mermaid');
+                for (var i = 0; i < diagrams.length; i++) {{
+                    var el = diagrams[i];
+                    var source = decodeEntities((el.textContent || '').trim());
+                    el.textContent = source;
+                    try {{
+                        var id = 'mermaid-' + Date.now() + '-' + i;
+                        var result = await mermaid.render(id, source);
+                        el.innerHTML = result.svg;
+                    }} catch (e) {{
+                        var escaped = source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        el.innerHTML = '<details style="border:1px solid #fca;background:#fff8f5;border-radius:4px;padding:8px">'
+                            + '<summary style="cursor:pointer;color:#c60;font-weight:bold">'
+                            + '\u26a0 Diagram could not be rendered (click to view source)</summary>'
+                            + '<pre style="margin:8px 0 0;overflow:auto;font-size:13px">' + escaped + '</pre></details>';
+                        console.warn('Mermaid render failed:', e.message || e);
+                    }}
+                }}
+            }})();
         }});
     </script>
 
@@ -478,6 +497,90 @@ def _resolve_file(args) -> "Optional[int]":
             continue
 
         args.file = choice  # kept as str; URL check + Path() conversion happen at next iteration
+
+
+def _open_flask_dashboard(port: int = 5000, browser: Optional[str] = None) -> None:
+    """Start the Flask backend and open the file-picker dashboard in the browser.
+
+    Starts the server (if not already running) and opens ``http://localhost:<port>/``
+    which serves the full browser UI for browsing and opening markdown files.
+    """
+    import time  # pylint: disable=import-outside-toplevel
+    import http.client  # pylint: disable=import-outside-toplevel
+
+    def _server_up(p: int) -> bool:
+        try:
+            conn = http.client.HTTPConnection("localhost", p, timeout=1)
+            conn.request("GET", "/api/health")
+            conn.getresponse()
+            conn.close()
+            return True
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False
+
+    try:
+        import flask as _flask  # noqa: F401  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        print("\u274c Flask is not installed in the current Python environment.")
+        print("   Run with:  poetry run mdview")
+        print("   Or install: pip install markdown-viewer-app")
+        return
+
+    if not _server_up(port):
+        env = os.environ.copy()
+        server_cmd = [
+            sys.executable,
+            "-c",
+            (
+                "from markdown_viewer.server import run_flask_app;"
+                f" run_flask_app(port={port}, use_reloader=False)"
+            ),
+        ]
+        if sys.platform == "win32":
+            CREATE_NEW_PROCESS_GROUP = 0x00000200  # pylint: disable=invalid-name
+            CREATE_NO_WINDOW = 0x08000000  # pylint: disable=invalid-name
+            subprocess.Popen(  # pylint: disable=consider-using-with
+                server_cmd,
+                creationflags=CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            subprocess.Popen(  # pylint: disable=consider-using-with
+                server_cmd,
+                start_new_session=True,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+        print(f"Starting server on port {port}...")
+        for _ in range(40):
+            if _server_up(port):
+                break
+            time.sleep(0.25)
+        else:
+            print("\u274c Server failed to start. Make sure all dependencies are installed.")
+            print("   Try: pip install markdown-viewer-app")
+            return
+
+    url = f"http://localhost:{port}/"
+    print(f"Opening dashboard: {url}")
+    if browser:
+        try:
+            controller = webbrowser.get(browser)
+            controller.open(url)
+        except webbrowser.Error:
+            subprocess.Popen(  # pylint: disable=consider-using-with
+                [browser, url],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+    elif sys.platform == "win32":
+        subprocess.Popen(f'start "" "{url}"', shell=True)  # pylint: disable=consider-using-with
+    else:
+        webbrowser.open(url)
 
 
 def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] = None) -> None:
@@ -786,6 +889,10 @@ def main():  # pylint: disable=too-many-branches,too-many-statements,too-many-re
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # Open the file-picker dashboard (no file needed)
+  mdview                              # Open dashboard in browser
+  mdview --serve                      # Explicitly open the dashboard
+
   # Basic rendering
   mdview README.md                    # Render and open in browser
   mdview README.md -o output.html     # Save to specific file
@@ -878,6 +985,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="Start the background server and open the file-picker dashboard in the browser",
+    )
+
+    parser.add_argument(
         "--browser",
         type=str,
         default=None,
@@ -894,6 +1007,25 @@ Examples:
 
     if args.stop:
         return _stop_server(port=args.port)
+
+    # --serve explicitly requests the dashboard; file arg is not applicable with --serve
+    if args.serve:
+        if args.file is not None:
+            print("Note: --serve opens the file-picker dashboard; the file argument is ignored.")
+        _open_flask_dashboard(port=args.port, browser=args.browser)
+        return 0
+
+    # No file and no export operations: open the file-picker dashboard
+    needs_file = args.export_pdf or args.export_word or args.share_pdf or args.share_word
+    if args.file is None and not needs_file:
+        if sys.stdout.isatty():
+            _open_flask_dashboard(port=args.port, browser=args.browser)
+            return 0
+        # Non-interactive (CI/CD) with no file — print usage and fail
+        print("Usage: mdview <file.md>")
+        print("Example: mdview README.md")
+        print("         mdview C:\\docs\\report.md")
+        return 1
 
     # Resolve and validate — loop until a valid file is given (or user cancels)
     early_exit = _resolve_file(args)
