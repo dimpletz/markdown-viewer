@@ -131,7 +131,7 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
         resources={
             r"/api/*": {
                 "origins": cors_origins,
-                "methods": ["GET", "POST", "OPTIONS"],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                 "allow_headers": ["Content-Type", "X-CSRF-Token", "X-CSRFToken"],
                 "expose_headers": ["Content-Type"],
                 "supports_credentials": True,
@@ -184,8 +184,12 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
 
     # Register blueprints
     from .routes import api_bp  # pylint: disable=import-outside-toplevel
+    from .favourites_routes import favourites_bp  # pylint: disable=import-outside-toplevel
+    from .db.database import init_db  # pylint: disable=import-outside-toplevel
 
     app.register_blueprint(api_bp, url_prefix="/api")
+    app.register_blueprint(favourites_bp, url_prefix="/api")
+    init_db(app)
 
     # Serve the Electron renderer UI for browser mode
     renderer_dir = os.path.join(os.path.dirname(__file__), "electron", "renderer")

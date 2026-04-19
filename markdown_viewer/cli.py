@@ -212,43 +212,102 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             background-color: #f6f8fa;
             border: 1px solid #d0d7de;
             border-radius: 6px;
-            padding: 16px 20px;
-            margin: 20px 0;
+            padding: 6px 10px;
+            margin: 10px 0;
             font-size: 14px;
         }}
         .markdown-body .toc .toctitle,
         .markdown-body .toc span.toctitle {{
             display: block;
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 12px;
+            font-weight: 900 !important;
+            font-size: 18px;
+            margin-bottom: 2px !important;
+            margin-top: 0 !important;
             color: #24292e;
+            line-height: 1.2 !important;
         }}
         .markdown-body .toc ul {{
             list-style: none;
             padding-left: 0;
-            margin: 8px 0;
+            margin: 0 !important;
         }}
         .markdown-body .toc > ul {{
-            margin: 0;
+            margin: 0 !important;
         }}
         .markdown-body .toc ul ul {{
-            padding-left: 20px;
-            margin: 4px 0;
+            padding-left: 16px;
+            margin: 0 !important;
         }}
         .markdown-body .toc li {{
-            margin: 4px 0;
-            line-height: 1.5;
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: 1.1 !important;
         }}
         .markdown-body .toc a {{
             color: #0969da;
             text-decoration: none;
             display: inline-block;
-            padding: 2px 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: 1.1 !important;
         }}
         .markdown-body .toc a:hover {{
             color: #0550ae;
             text-decoration: underline;
+        }}
+        
+        /* Single line spacing overrides for all elements */
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4,
+        .markdown-body h5,
+        .markdown-body h6 {{
+            margin-top: 16px !important;
+            margin-bottom: 8px !important;
+        }}
+        .markdown-body h1:first-child,
+        .markdown-body h2:first-child,
+        .markdown-body h3:first-child {{
+            margin-top: 0 !important;
+        }}
+        .markdown-body p {{
+            margin-top: 0 !important;
+            margin-bottom: 8px !important;
+        }}
+        .markdown-body ul,
+        .markdown-body ol {{
+            margin-top: 0 !important;
+            margin-bottom: 8px !important;
+            padding-left: 2em !important;
+        }}
+        .markdown-body li {{
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }}
+        .markdown-body li > p {{
+            margin-bottom: 0 !important;
+        }}
+        .markdown-body blockquote {{
+            margin: 8px 0 !important;
+            padding: 0 1em !important;
+        }}
+        .markdown-body pre {{
+            margin-top: 0 !important;
+            margin-bottom: 8px !important;
+        }}
+        .markdown-body code {{
+            margin: 0 !important;
+        }}
+        .markdown-body table {{
+            margin-top: 0 !important;
+            margin-bottom: 8px !important;
+        }}
+        .markdown-body hr {{
+            margin: 16px 0 !important;
+        }}
+        .markdown-body .highlight {{
+            margin-bottom: 8px !important;
         }}
     </style>
 </head>
@@ -528,6 +587,7 @@ def _open_flask_dashboard(port: int = 5000, browser: Optional[str] = None) -> No
 
     if not _server_up(port):
         env = os.environ.copy()
+        env["BACKEND_PORT"] = str(port)  # Set BACKEND_PORT for CORS configuration
         server_cmd = [
             sys.executable,
             "-c",
@@ -634,6 +694,7 @@ def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] 
         # immediately after the browser opens.
         env = os.environ.copy()
         env.setdefault("ALLOWED_DOCUMENTS_DIR", str(drive_root))
+        env["BACKEND_PORT"] = str(port)  # Set BACKEND_PORT for CORS configuration
 
         server_cmd = [
             sys.executable,
@@ -797,11 +858,15 @@ def export_to_pdf(filepath: Path, output: Optional[Path] = None) -> Path:
         # If the user passed a directory, place the file inside it
         pdf_path = output / filepath.with_suffix(".pdf").name if output.is_dir() else output
     else:
-        pdf_path = filepath.with_suffix(".pdf")
+        # Auto-append timestamp to filename
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pdf_path = filepath.parent / f"{filepath.stem}_{timestamp}.pdf"
 
     # Export to PDF
     exporter = PDFExporter()
-    exporter.export(html_content, str(pdf_path))
+    exporter.export(html_content, str(pdf_path), options={"base_path": str(filepath)})
     exporter.close()  # Properly close browser and playwright
 
     return pdf_path
@@ -838,11 +903,15 @@ def export_to_word(filepath: Path, output: Optional[Path] = None) -> Path:
         # If the user passed a directory, place the file inside it
         word_path = output / filepath.with_suffix(".docx").name if output.is_dir() else output
     else:
-        word_path = filepath.with_suffix(".docx")
+        # Auto-append timestamp to filename
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        word_path = filepath.parent / f"{filepath.stem}_{timestamp}.docx"
 
     # Export to Word
     exporter = WordExporter()
-    exporter.export(html_content, markdown_content, str(word_path))
+    exporter.export(html_content, markdown_content, str(word_path), md_file_path=str(filepath))
 
     return word_path
 
@@ -1037,7 +1106,10 @@ Examples:
         if args.export_pdf or args.share_pdf:
             output_path = args.export_pdf if isinstance(args.export_pdf, Path) else None
             pdf_path = export_to_pdf(args.file, output=output_path)
-            print(f"✅ Exported to PDF: {pdf_path}")
+            try:
+                print(f"✅ Exported to PDF: {pdf_path}")
+            except UnicodeEncodeError:
+                print(f"Exported to PDF: {pdf_path}")
 
             if args.share_pdf:
                 share_via_email(args.file, pdf_path, "PDF")
@@ -1046,7 +1118,10 @@ Examples:
         if args.export_word or args.share_word:
             output_path = args.export_word if isinstance(args.export_word, Path) else None
             word_path = export_to_word(args.file, output=output_path)
-            print(f"✅ Exported to Word: {word_path}")
+            try:
+                print(f"✅ Exported to Word: {word_path}")
+            except UnicodeEncodeError:
+                print(f"Exported to Word: {word_path}")
 
             if args.share_word:
                 share_via_email(args.file, word_path, "Word")

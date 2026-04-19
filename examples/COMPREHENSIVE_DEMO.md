@@ -112,6 +112,10 @@ echo "Deployment complete!"
 
 [GitHub](https://github.com) | [Documentation](#) | [PyPI](https://pypi.org)
 
+**Local Image Test:**
+
+![Cover Image](C:\Users\ron3l\OneDrive\Documents\Ella Creations\Web Novels\11 The Last Rishi\Cover_5.png)
+
 ## Horizontal Rule
 
 ---

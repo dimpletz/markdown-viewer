@@ -3,6 +3,7 @@
 # pylint: disable=redefined-outer-name
 import os
 import tempfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -59,13 +60,20 @@ def test_word_export(sample_html, sample_markdown):
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
         output_path = f.name
 
-    try:
-        exporter.export(sample_html, sample_markdown, output_path)
-        assert os.path.exists(output_path)
-        assert os.path.getsize(output_path) > 0
-    finally:
-        if os.path.exists(output_path):
-            os.unlink(output_path)
+    # Mock the _load_html method to avoid Playwright browser launch
+    with patch.object(exporter, "_load_html"):
+        # Mock the page to return our sample HTML
+        exporter.page = MagicMock()
+        exporter.page.content.return_value = sample_html
+        exporter.page.locator.return_value.screenshot.return_value = b"fake_screenshot"
+
+        try:
+            exporter.export(sample_html, sample_markdown, output_path)
+            assert os.path.exists(output_path)
+            assert os.path.getsize(output_path) > 0
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
 
 
 def test_word_export_complex_elements():
@@ -95,10 +103,17 @@ def test_word_export_complex_elements():
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
         output_path = f.name
 
-    try:
-        exporter.export(html, "", output_path)
-        assert os.path.exists(output_path)
-        assert os.path.getsize(output_path) > 0
-    finally:
-        if os.path.exists(output_path):
-            os.unlink(output_path)
+    # Mock the _load_html method to avoid Playwright browser launch
+    with patch.object(exporter, "_load_html"):
+        # Mock the page to return our HTML
+        exporter.page = MagicMock()
+        exporter.page.content.return_value = html
+        exporter.page.locator.return_value.screenshot.return_value = b"fake_screenshot"
+
+        try:
+            exporter.export(html, "", output_path)
+            assert os.path.exists(output_path)
+            assert os.path.getsize(output_path) > 0
+        finally:
+            if os.path.exists(output_path):
+                os.unlink(output_path)

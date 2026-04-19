@@ -22,6 +22,9 @@ const API = {
      */
     async init() {
         try {
+            // Enable sending cookies for CSRF/session validation
+            axios.defaults.withCredentials = true;
+            
             // Fetch CSRF token for subsequent requests
             const response = await axios.get(`${BACKEND_URL}/api/csrf`);
             if (response.data && response.data.csrf_token) {
@@ -130,6 +133,46 @@ const API = {
             console.error('Backend not available:', error);
             return { status: 'error' };
         }
+    },
+
+    // ------------------------------------------------------------------
+    // Favourites
+    // ------------------------------------------------------------------
+
+    async getFavourites() {
+        const response = await axios.get(`${BACKEND_URL}/api/favourites`);
+        return response.data;
+    },
+
+    async searchFavourites(q) {
+        const response = await axios.get(`${BACKEND_URL}/api/favourites/search`, {
+            params: { q }
+        });
+        return response.data;
+    },
+
+    async checkFavourite(filePath) {
+        const response = await axios.get(`${BACKEND_URL}/api/favourites/check`, {
+            params: { path: filePath }
+        });
+        return response.data;
+    },
+
+    async addFavourite(filePath) {
+        const response = await axios.post(`${BACKEND_URL}/api/favourites`, {
+            path: filePath
+        });
+        return response.data;
+    },
+
+    async updateFavourite(id, data) {
+        const response = await axios.put(`${BACKEND_URL}/api/favourites/${id}`, data);
+        return response.data;
+    },
+
+    async deleteFavourite(id) {
+        const response = await axios.delete(`${BACKEND_URL}/api/favourites/${id}`);
+        return response.data;
     }
 };
 

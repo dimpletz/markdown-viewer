@@ -10,6 +10,8 @@
 
 Open any markdown file in a full browser UI with one command. Supports PDF and Word export, Mermaid diagrams, math equations, syntax highlighting, and content translation.
 
+[TOC]
+
 ---
 
 ## 📦 Installation
@@ -22,7 +24,6 @@ playwright install chromium
 > `playwright install chromium` is a **one-time setup** (~140 MB) required for PDF export. Skip it if you don't need PDF export.
 
 ---
-
 ## 🚀 Quick Start
 
 ```bash
@@ -45,6 +46,7 @@ mdview README.md --no-browser
 mdview README.md -o output.html
 
 # Use a custom port (default is 5000)
+# Note: Some ports like 6000 are blocked by Chrome - use 5001, 8000, 8080, etc.
 mdview README.md -p 5001
 
 # Stop the background server on a custom port
@@ -58,14 +60,18 @@ When you run `mdview <file>`, the app:
 
 The server keeps running in the background. Subsequent `mdview` calls reuse it instantly. Use `-p`/`--port` to run multiple servers on different ports simultaneously.
 
----
+> **Port Selection:** Chrome and Edge block certain ports for security reasons. For example:
+> - **Port 6000-6063**: Blocked because they're used by the X11 windowing system (Unix/Linux). Chrome prevents malicious websites from using your browser to attack local X11 services, which could allow screen capture, keystroke logging, or connection hijacking.
+> - **Port 6665-6669**: IRC ports, also blocked for security.
+> 
+> If you see `ERR_UNSAFE_PORT`, choose a safe port like **5001, 8000, 8080, or 3000**. [Full list of blocked ports](https://chromium.googlesource.com/chromium/src.git/+/refs/heads/main/net/base/port_util.cc).
 
+---
 ## 🖥️ CLI Reference
 
 ```
 mdview [file] [options]
 ```
-
 ### Arguments
 
 | Argument | Description |
@@ -84,10 +90,9 @@ mdview [file] [options]
 | `--share-pdf` | — | Export to PDF and open your email client with it attached |
 | `--share-word` | — | Export to Word and open your email client with it attached |
 | `--browser <name-or-path>` | *(system default)* | Browser to open (e.g. `firefox`, `chrome`, `msedge`, `safari`, `opera`, `iexplore`). Accepts any name recognised by Python's `webbrowser` module or a full path to the browser executable |
-| `-p`, `--port <port>` | `5000` | Port for the background Flask server |
+| `-p`, `--port <port>` | `5000` | Port for the background Flask server. **Note:** Chrome/Edge block certain ports for security (e.g., 6000-6063 for X11, 6665-6669 for IRC). Use safe ports like 5001, 8000, 8080, 3000 |
 | `--stop` | — | Stop the background server and release the port |
 | `--version` | — | Print the installed version and exit |
-
 ### Examples
 
 ```bash
@@ -132,6 +137,13 @@ mdview README.md -p 5001       # Open using a custom port
 mdview --stop                  # Stop the default server (port 5000)
 mdview --stop -p 5001          # Stop a server on a custom port
 
+# ⚠️ Note: Some ports are blocked by browsers for security reasons
+# Chrome/Edge block port 6000-6063 (X11 windowing system - prevents screen capture/keystroke hijacking)
+# Also blocked: 6665-6669 (IRC), and others
+# Full list: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/main/net/base/port_util.cc
+# Use safe ports like: 5001, 5050, 8000, 8080, 8888, 9000, 3000, 4000
+mdview README.md -p 8080       # Safe alternative port
+
 # --- CI/CD (non-interactive) ---
 # When stdout is not a TTY, browser and server are skipped automatically
 mdview README.md -o output.html
@@ -141,7 +153,6 @@ mdview --version
 ```
 
 ---
-
 ## ✨ Features
 
 ### 📝 Rich Markdown Rendering
@@ -149,33 +160,27 @@ mdview --version
 - Syntax highlighting for 180+ programming languages
 - Tables, task lists, footnotes, blockquotes, and more
 - Emoji support with correct Unicode rendering
-
 ### 📊 Diagram Support
 - **Mermaid**: flowcharts, sequence diagrams, pie charts, Gantt charts, state diagrams
 - Diagrams are preserved in all export formats
-
 ### 🔢 Math Equations
 - KaTeX integration for beautiful math rendering
 - Inline: `$E = mc^2$`
 - Block equations with full LaTeX syntax
-
 ### 📄 Export
 - **PDF** — high-quality, print-ready (powered by Playwright/Chromium)
 - **Word (.docx)** — editable documents with preserved formatting
 - Silent: no popup dialogs, status bar updates on completion
-
 ### 🌐 Translation
 - Translate content to 15+ languages directly from the UI
 - Preserves markdown formatting and code blocks
 - Powered by [MyMemory](https://mymemory.translated.net/) (free API, no key needed)
-
 ### 🔒 Security
 - CSRF protection on all API endpoints
 - Content Security Policy (CSP) headers
 - Input validation with Marshmallow schemas
 - Path traversal protection
 - Localhost-only server binding (127.0.0.1)
-
 ### 🔗 Local File Navigation
 - Both **relative** and **absolute** paths to `.md` files open the target inside the viewer — no 404s:
   ```markdown
@@ -190,7 +195,6 @@ mdview --version
   ![[C:\docs\shared\footer.md]]                   <!-- absolute -->
   ```
   Transclusions are resolved recursively (up to 10 levels). Images inside embedded files are re-resolved relative to their own location, so they always display correctly.
-
 ### 🖼️ Local Image Rendering
 - Images referenced by **relative** or **absolute** paths are served securely via the built-in `/api/image` endpoint
 - Both Windows backslash and forward-slash paths are supported:
@@ -201,7 +205,6 @@ mdview --version
   ![Photo](/home/user/photos/shot.jpg)            <!-- absolute, forward-slash -->
   ```
 - Remote images (`https://`) pass through unchanged
-
 ### 🌍 Browser Compatibility
 
 The viewer UI runs in any modern browser. The `--browser` flag lets you specify exactly which one to use — useful when a corporate proxy or security policy restricts the default browser:
@@ -218,14 +221,12 @@ The viewer UI runs in any modern browser. The `--browser` flag lets you specify 
 | Any other browser | Full path to executable | Pass the absolute path, e.g. `"C:/MyBrowser/browser.exe"` |
 
 > **Corporate environments:** if the system default browser is locked down (e.g. a hardened Internet Explorer), pass `--browser firefox` or `--browser msedge` to open in a modern browser instead.
-
 ### 🛠️ Productivity Tools
 - Copy all content with one click
 - Share via email
 - Keyboard shortcuts: `Ctrl+O` (open), `Ctrl+Shift+C` (copy), `F5` (refresh), `F11` (fullscreen)
 
 ---
-
 ## 📖 Markdown Reference
 
 ### Basic Formatting
@@ -245,7 +246,6 @@ The viewer UI runs in any modern browser. The `--browser` flag lets you specify 
 [Link text](https://example.com)
 ![Alt text](https://example.com/image.png)
 ```
-
 ### Local File Links
 
 Both relative and absolute paths to `.md` files open the target inside the viewer:
@@ -256,7 +256,6 @@ Both relative and absolute paths to `.md` files open the target inside the viewe
 [Parent README](../README.md)                    <!-- parent directory -->
 [Notes](C:\Users\me\Documents\notes.md)          <!-- absolute path -->
 ```
-
 ### File Transclusion (Embed)
 
 Embed the full content of another markdown file inline using `![[path]]`:
@@ -277,7 +276,6 @@ Embed the full content of another markdown file inline using `![[path]]`:
 - Transclusions are resolved recursively (up to 10 levels deep)
 - Circular includes are detected and skipped
 - Images inside embedded files resolve correctly relative to their own location
-
 ### Code Blocks
 
 ````markdown
@@ -292,7 +290,6 @@ def fibonacci(n):
 SELECT name, COUNT(*) FROM users GROUP BY name;
 ```
 ````
-
 ### Tables
 
 ```markdown
@@ -304,7 +301,6 @@ SELECT name, COUNT(*) FROM users GROUP BY name;
 | Diagrams       | ✅              | ✅     | ✅      |
 | Free & Open    | ✅              | ❌     | ✅      |
 ```
-
 ### Mermaid Diagrams
 
 ````markdown
@@ -321,7 +317,6 @@ sequenceDiagram
     Server-->>Client: Response
 ```
 ````
-
 ### Math Equations
 
 ```markdown
@@ -332,7 +327,6 @@ $$
 \int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}
 $$
 ```
-
 ### Task Lists
 
 ```markdown
@@ -342,7 +336,6 @@ $$
 ```
 
 ---
-
 ## 🔧 Development Setup
 
 ```bash
@@ -351,7 +344,6 @@ cd markdown-viewer
 poetry install
 poetry run playwright install chromium
 ```
-
 ### Run
 
 ```bash
@@ -361,7 +353,6 @@ poetry run mdview README.md
 # Or start the server standalone
 poetry run mdview README.md --no-browser
 ```
-
 ### Tests
 
 ```bash
@@ -371,7 +362,6 @@ poetry run pytest
 # With coverage report
 poetry run pytest --cov=markdown_viewer --cov-report=html
 ```
-
 ### Project Structure
 
 ```
@@ -396,7 +386,6 @@ markdown-viewer/
 ```
 
 ---
-
 ## 🐛 Known Limitations
 
 - PDF export requires `playwright install chromium` (one-time ~140 MB download)
@@ -404,7 +393,6 @@ markdown-viewer/
 - Word export has limited support for complex CSS styling
 
 ---
-
 ## 📚 More Documentation
 
 - [CLI Usage & Export Examples](docs/CLI_USAGE.md)
@@ -414,7 +402,6 @@ markdown-viewer/
 - [Changelog](CHANGELOG.md)
 
 ---
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -429,7 +416,6 @@ markdown-viewer/
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
-
 ## 🙏 Acknowledgments
 
 - **[Flask](https://flask.palletsprojects.com/)** — Python web framework

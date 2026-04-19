@@ -1,6 +1,7 @@
 """Tests for CLI functions (cli.py)."""
 
 # pylint: disable=import-outside-toplevel
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -52,7 +53,7 @@ def test_export_to_pdf_with_mock(tmp_path):
     md_file.write_text("# PDF Test", encoding="utf-8")
     out_path = tmp_path / "doc.pdf"
 
-    def fake_export(_html, path):
+    def fake_export(_html, path, options=None):
         Path(path).write_bytes(b"%PDF-1.4")
 
     with (
@@ -72,7 +73,7 @@ def test_export_to_pdf_default_output(tmp_path):
     md_file = tmp_path / "report.md"
     md_file.write_text("# Report", encoding="utf-8")
 
-    def fake_export(_html, path):
+    def fake_export(_html, path, options=None):
         Path(path).write_bytes(b"%PDF-1.4")
 
     with (
@@ -84,7 +85,11 @@ def test_export_to_pdf_default_output(tmp_path):
         result = export_to_pdf(md_file)
 
     try:
-        assert result == tmp_path / "report.pdf"
+        # Check for timestamp pattern: report_YYYYMMDD_HHMMSS.pdf
+        assert re.match(
+            r"report_\d{8}_\d{6}\.pdf", result.name
+        ), f"Unexpected filename: {result.name}"
+        assert result.parent == tmp_path
         assert result.exists()
     finally:
         result.unlink(missing_ok=True)
@@ -104,7 +109,11 @@ def test_export_to_word_default_output(tmp_path):
 
     result = export_to_word(md_file)
     try:
-        assert result == tmp_path / "notes.docx"
+        # Check for timestamp pattern: notes_YYYYMMDD_HHMMSS.docx
+        assert re.match(
+            r"notes_\d{8}_\d{6}\.docx", result.name
+        ), f"Unexpected filename: {result.name}"
+        assert result.parent == tmp_path
         assert result.exists()
     finally:
         result.unlink(missing_ok=True)
@@ -730,7 +739,7 @@ def test_export_to_pdf_output_is_directory(tmp_path):
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
-    def fake_export(_html, path):
+    def fake_export(_html, path, options=None):
         _Path(path).write_bytes(b"%PDF-1.4")
 
     with (

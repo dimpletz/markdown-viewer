@@ -14,6 +14,7 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/favourites.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/monokai.min.css">
     
@@ -31,6 +32,9 @@
         <!-- Toolbar -->
         <div id="toolbar">
             <div class="toolbar-left">
+                <button id="btnHome" class="btn" title="Back to Home" style="display:none;">
+                    <span class="icon">🏠</span> Home
+                </button>
                 <button id="btnOpen" class="btn btn-primary" title="Open File (Ctrl+O)">
                     <span class="icon">📂</span> Open
                 </button>
@@ -51,6 +55,11 @@
                 <button id="btnShare" class="btn" title="Share via Email">
                     <span class="icon">📧</span> Share
                 </button>
+                <div class="separator"></div>
+                <button id="btnFavourite" class="btn btn-fav" aria-pressed="false"
+                        title="Add to Favourites" style="display:none;">
+                    ☆ Favourite
+                </button>
             </div>
             <div class="toolbar-right">
                 <button id="btnTranslate" class="btn" title="Translate">
@@ -69,14 +78,24 @@
 
         <!-- Main Content -->
         <div id="main-content">
-            <!-- Sidebar (optional file tree) -->
-            <div id="sidebar" style="display:none;">
-                <h3>Files</h3>
-                <div id="file-tree"></div>
+            <!-- Favourites Sidebar (shown when a file is open and favourites exist) -->
+            <div id="fav-sidebar" class="fav-sidebar" style="display:none;"
+                 role="complementary" aria-label="Favourites">
+                <div class="fav-sidebar-header">
+                    <span>Favourites</span>
+                    <button id="btnCloseSidebar" aria-label="Close favourites sidebar">×</button>
+                </div>
+                <input id="favSidebarSearch" class="fav-search-input"
+                       placeholder="Search favourites…" aria-label="Search favourites"
+                       autocomplete="off">
+                <div id="favSidebarAutocomplete" class="fav-autocomplete"
+                     style="display:none;" role="listbox"></div>
+                <ul id="favSidebarList" class="fav-list" role="list"></ul>
             </div>
 
             <!-- Content Area -->
             <div id="content-area">
+                <!-- Welcome screen (always shown on home page) -->
                 <div id="welcome" class="welcome-screen" style="display:none;">
                     <div class="welcome-content">
                         <h1>📝 Markdown Viewer</h1>
@@ -86,7 +105,24 @@
                                 <span class="icon">📂</span> Open Markdown File
                             </button>
                         </div>
-                        <div class="features">
+                        
+                        <!-- Favourites table (shown when favourites exist) -->
+                        <div id="fav-dashboard" style="display:none;">
+                            <div class="fav-dashboard-header">
+                                <h2>Favourites</h2>
+                                <div style="position:relative;">
+                                    <input id="favTableSearch" class="fav-search-input"
+                                           placeholder="Search favourites…"
+                                           aria-label="Search favourites" autocomplete="off">
+                                    <div id="favTableAutocomplete" class="fav-autocomplete"
+                                         style="display:none;" role="listbox"></div>
+                                </div>
+                            </div>
+                            <div id="favTableContainer"></div>
+                        </div>
+                        
+                        <!-- Features (shown when no favourites) -->
+                        <div id="welcome-features" class="features">
                             <div class="feature">
                                 <h3>✨ Features</h3>
                                 <ul>
@@ -115,6 +151,9 @@
             <span id="file-path"></span>
         </div>
     </div>
+
+    <!-- Favourites context menu -->
+    <div id="fav-context-menu" class="fav-context-menu" style="display:none;" role="menu"></div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" style="display:none;">
@@ -187,6 +226,7 @@
     <script src="scripts/browser-shim.js"></script>
     <script src="scripts/api.js"></script>
     <script src="scripts/renderer.js"></script>
+    <script src="scripts/favourites.js"></script>
     <script src="scripts/app.js"></script>
 </body>
 </html>

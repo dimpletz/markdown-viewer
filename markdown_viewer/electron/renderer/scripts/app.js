@@ -36,6 +36,12 @@ class MarkdownViewerApp {
         this.filePath = document.getElementById('file-path');
         this.loadingOverlay = document.getElementById('loading-overlay');
 
+        // Favourite button (shown after file load)
+        this.btnFavourite = document.getElementById('btnFavourite');
+
+        // Home button (shown when a file is open, returns to main page)
+        this.btnHome = document.getElementById('btnHome');
+
         // Modal
         this.translateModal = document.getElementById('translate-modal');
         this.btnConfirmTranslate = document.getElementById('btnConfirmTranslate');
@@ -49,6 +55,9 @@ class MarkdownViewerApp {
         this.btnOpen.addEventListener('click', () => this.openFile());
         this.btnOpenWelcome.addEventListener('click', () => this.openFile());
         this.btnRefresh.addEventListener('click', () => this.refreshPreview());
+        if (this.btnHome) {
+            this.btnHome.addEventListener('click', () => this.goHome());
+        }
 
         // Export operations
         this.btnExportPdf.addEventListener('click', () => this.exportPDF());
@@ -100,6 +109,8 @@ class MarkdownViewerApp {
         if (!pdfAvailable) {
             this.btnExportPdf.style.display = 'none';
         }
+        // Notify FavouritesManager that the backend is ready (R1)
+        document.dispatchEvent(new CustomEvent('backend:ready'));
     }
 
     async openFile() {
@@ -154,6 +165,12 @@ class MarkdownViewerApp {
                 this.filePath.textContent = filePath;
                 this.welcome.style.display = 'none';
                 this.preview.style.display = 'block';
+                if (this.btnHome) this.btnHome.style.display = '';
+
+                // Notify FavouritesManager of the loaded file
+                if (window.favouritesManager) {
+                    window.favouritesManager.onFileLoaded(filePath);
+                }
             } else {
                 throw new Error(result.error?.message || 'Failed to load file');
             }
@@ -186,6 +203,12 @@ class MarkdownViewerApp {
                 // Hide welcome, show preview
                 this.welcome.style.display = 'none';
                 this.preview.style.display = 'block';
+                if (this.btnHome) this.btnHome.style.display = '';
+
+                // Notify FavouritesManager of the loaded file
+                if (window.favouritesManager) {
+                    window.favouritesManager.onFileLoaded(filePath);
+                }
             } else {
                 throw new Error(result.error);
             }
@@ -335,6 +358,28 @@ class MarkdownViewerApp {
             } else {
                 await this.loadFile(this.currentFile);
             }
+        }
+    }
+
+    goHome() {
+        // Clear file state
+        this.currentFile = null;
+        this.currentMarkdown = null;
+        this.currentHTML = null;
+        this._loadedFromServer = false;
+
+        // Hide file view elements
+        this.preview.style.display = 'none';
+        if (this.btnFavourite) this.btnFavourite.style.display = 'none';
+        if (this.btnHome) this.btnHome.style.display = 'none';
+        this.filePath.textContent = '';
+        this.setStatus('');
+
+        // Delegate welcome/dashboard display to FavouritesManager
+        if (window.favouritesManager) {
+            window.favouritesManager.goHome();
+        } else {
+            this.welcome.style.display = '';
         }
     }
 
@@ -555,12 +600,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Create and initialize app
     window.app = new MarkdownViewerApp();
 
+    // Instantiate FavouritesManager (waits for 'backend:ready' event internally)
+    window.favouritesManager = new FavouritesManager();
+
+    // Route fav:open-file events to the correct loader
+    document.addEventListener('fav:open-file', (e) => {
+        const { path: filePath, target } = e.detail;
+        if (target === 'window') {
+            // Electron: open in a new window via IPC
+            if (window.electronAPI) {
+                window.electronAPI.invoke('open-new-window', filePath).catch(err => {
+                    console.error('open-new-window failed:', err);
+                });
+            }
+        } else if (target === 'tab') {
+            // Browser: open in a new tab
+            const encoded = encodeURIComponent(filePath);
+            window.open(`/?file=${encoded}`, '_blank');
+        } else {
+            // Same window
+            window.app.loadFileFromServer(filePath);
+        }
+    });
+
+    // Route app:status events dispatched by FavouritesManager
+    document.addEventListener('app:status', (e) => {
+        window.app.setStatus(e.detail.message, e.detail.level);
+    });
+
     // Auto-load file passed via ?file= URL parameter (browser/CLI mode)
     const urlFile = new URLSearchParams(window.location.search).get('file');
     if (urlFile) {
         window.app.loadFileFromServer(urlFile);
     } else {
-        // No file param — show the welcome screen
+        // No file param — FavouritesManager will show dashboard or welcome
         const welcome = document.getElementById('welcome');
         if (welcome) welcome.style.display = '';
     }

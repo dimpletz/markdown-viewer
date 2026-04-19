@@ -77,6 +77,12 @@ logs/
 markdown_viewer/uploads/
 markdown_viewer/temp/
 
+# Database (local data, never commit)
+markdown_viewer.db
+markdown_viewer.db-journal
+*.db
+*.db-journal
+
 # Generated files
 *.pdf
 *.docx

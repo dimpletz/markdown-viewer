@@ -17,7 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'save-export-file',
       'show-save-dialog',
       'show-open-dialog',
-      'read-image-as-dataurl'
+      'read-image-as-dataurl',
+      'open-new-window'
     ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);

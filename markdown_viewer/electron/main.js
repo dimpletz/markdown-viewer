@@ -266,6 +266,29 @@ ipcMain.handle('read-image-as-dataurl', async (event, filePath) => {
   }
 });
 
+ipcMain.handle('open-new-window', async (event, filePath) => {
+  const validation = validateFilePath(filePath);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  win.webContents.once('did-finish-load', () => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('open-file', validation.resolvedPath);
+    }
+  });
+});
+
 app.whenReady().then(() => {
   createWindow();
 

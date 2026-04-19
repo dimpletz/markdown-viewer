@@ -94,6 +94,8 @@ def main():
 
     # Allow access to the full filesystem root for local CLI use (server is localhost-only)
     os.environ.setdefault("ALLOWED_DOCUMENTS_DIR", str(Path(Path.home().anchor)))
+    # Set BACKEND_PORT for CORS configuration
+    os.environ["BACKEND_PORT"] = str(args.port)
 
     # Start the Flask backend server
     print(f"Starting backend server on port {args.port}...")

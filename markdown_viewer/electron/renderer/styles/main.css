@@ -91,6 +91,21 @@ body {
     border-color: var(--primary-hover);
 }
 
+.btn-fav {
+    color: #b8860b;
+}
+
+.btn-fav[aria-pressed="true"] {
+    background: #fff8e1;
+    border-color: #f9a825;
+    color: #e65100;
+    font-weight: 600;
+}
+
+.btn-fav[aria-pressed="true"]:hover {
+    background: #fff3cd;
+}
+
 .btn-large {
     padding: 12px 24px;
     font-size: 16px;
