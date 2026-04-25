@@ -157,7 +157,6 @@ def test_translate_falls_back_to_original_when_all_retries_fail(translator):
 def test_mymemory_request_success():
     """_mymemory_request returns translated text on a 200 response."""
     import json
-    from io import BytesIO
     from unittest.mock import MagicMock, patch
 
     from markdown_viewer.translators.content_translator import _mymemory_request

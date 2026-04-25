@@ -153,3 +153,177 @@ def test_export_wraps_fragment_in_full_html(tmp_path):
 
     # page.goto was called — confirming the fragment was wrapped and rendered
     mock_page.goto.assert_called_once()
+
+
+def test_embed_local_images_skips_remote_urls():
+    """_embed_local_images() leaves http/https URLs unchanged."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    exporter = PDFExporter()
+    html = '<img src="https://example.com/pic.png"><img src="http://test.com/x.jpg">'
+
+    result = exporter._embed_local_images(html)
+
+    assert "https://example.com/pic.png" in result
+    assert "http://test.com/x.jpg" in result
+    assert "data:" not in result
+
+
+def test_embed_local_images_skips_data_urls():
+    """_embed_local_images() leaves data: URLs unchanged."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    exporter = PDFExporter()
+    html = '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA">'
+
+    result = exporter._embed_local_images(html)
+
+    assert "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA" in result
+
+
+def test_embed_local_images_skips_empty_src():
+    """_embed_local_images() skips <img> tags with no src."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    exporter = PDFExporter()
+    html = '<img alt="no source"><img src="">'
+
+    result = exporter._embed_local_images(html)
+
+    # Should not raise, just skip
+    assert "<img" in result
+
+
+def test_embed_local_images_converts_local_file_to_data_url(tmp_path):
+    """_embed_local_images() converts local file paths to base64 data URLs."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    # Create a dummy image file
+    img_file = tmp_path / "test.png"
+    img_file.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)  # Minimal PNG header
+
+    exporter = PDFExporter()
+    html = f'<img src="{img_file}">'
+
+    result = exporter._embed_local_images(html, base_path=None)
+
+    assert "data:image/png;base64," in result
+    assert str(img_file) not in result  # Original path replaced
+
+
+def test_embed_local_images_uses_base_path_for_relative(tmp_path):
+    """_embed_local_images() resolves relative paths using base_path."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    # Create structure: tmp_path/doc.md and tmp_path/images/pic.jpg
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    img_file = images_dir / "pic.jpg"
+    img_file.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)  # Minimal JPEG header
+    base_file = tmp_path / "doc.md"
+
+    exporter = PDFExporter()
+    html = '<img src="images/pic.jpg">'
+
+    result = exporter._embed_local_images(html, base_path=str(base_file))
+
+    assert "data:image/jpeg;base64," in result
+
+
+def test_embed_local_images_handles_url_encoded_paths(tmp_path):
+    """_embed_local_images() decodes URL-encoded paths (e.g., spaces)."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    img_file = tmp_path / "my image.png"
+    img_file.write_bytes(b"\x89PNG" + b"\x00" * 10)
+
+    exporter = PDFExporter()
+    html = f'<img src="{str(img_file).replace(" ", "%20")}">'
+
+    result = exporter._embed_local_images(html)
+
+    assert "data:image/png;base64," in result
+
+
+def test_embed_local_images_handles_missing_file():
+    """_embed_local_images() logs warning and skips when file not found."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    exporter = PDFExporter()
+    html = '<img src="/nonexistent/path/to/image.png">'
+
+    with patch("markdown_viewer.exporters.pdf_exporter.logger") as mock_logger:
+        result = exporter._embed_local_images(html)
+
+    # Should log a warning
+    assert any("not found" in str(call).lower() for call in mock_logger.warning.call_args_list)
+    # Original src should remain
+    assert "/nonexistent/path/to/image.png" in result
+
+
+def test_embed_local_images_handles_read_error(tmp_path):
+    """_embed_local_images() logs warning and skips when file read fails."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+    from pathlib import Path
+
+    # Create a valid path but mock the read to fail
+    img_file = tmp_path / "error.png"
+    img_file.write_text("")  # exists but will cause issues
+
+    exporter = PDFExporter()
+    html = f'<img src="{img_file}">'
+
+    with (
+        patch.object(Path, "exists", return_value=True),
+        patch.object(Path, "is_file", return_value=True),
+        patch("builtins.open", side_effect=OSError("Permission denied")),
+    ):
+        with patch("markdown_viewer.exporters.pdf_exporter.logger") as mock_logger:
+            exporter._embed_local_images(html)
+
+    # Should log a warning about the failure
+    assert any("Failed to embed" in str(call) for call in mock_logger.warning.call_args_list)
+
+
+def test_embed_local_images_detects_mime_types(tmp_path):
+    """_embed_local_images() correctly maps file extensions to MIME types."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    test_cases = [
+        ("test.png", "image/png"),
+        ("test.jpg", "image/jpeg"),
+        ("test.jpeg", "image/jpeg"),
+        ("test.gif", "image/gif"),
+        ("test.webp", "image/webp"),
+        ("test.svg", "image/svg+xml"),
+        ("test.bmp", "image/bmp"),
+    ]
+
+    exporter = PDFExporter()
+
+    for filename, expected_mime in test_cases:
+        img_file = tmp_path / filename
+        img_file.write_bytes(b"\x00" * 10)
+
+        html = f'<img src="{img_file}">'
+        result = exporter._embed_local_images(html)
+
+        assert f"data:{expected_mime};base64," in result, f"Failed for {filename}"
+
+
+def test_embed_local_images_logs_embedded_image_size(tmp_path):
+    """_embed_local_images() logs the embedded image name and size."""
+    from markdown_viewer.exporters.pdf_exporter import PDFExporter
+
+    img_file = tmp_path / "large.png"
+    img_file.write_bytes(b"\x00" * 3072)  # 3 KB
+
+    exporter = PDFExporter()
+    html = f'<img src="{img_file}">'
+
+    with patch("markdown_viewer.exporters.pdf_exporter.logger") as mock_logger:
+        exporter._embed_local_images(html)
+
+    # Should log the image name and size (3072 // 1024 = 3)
+    log_calls = [str(call) for call in mock_logger.info.call_args_list]
+    assert any("large.png" in call for call in log_calls)

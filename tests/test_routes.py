@@ -212,7 +212,7 @@ def test_export_word_success(client):
     """POST /api/export/word returns docx bytes with mocked exporter."""
     from pathlib import Path as _Path
 
-    def fake_export(_html, _markdown, path):
+    def fake_export(_html, _markdown, path, backend_port=None):
         _Path(path).write_bytes(b"PK dummy docx")
 
     with patch("markdown_viewer.routes.WordExporter") as mock_cls:
@@ -578,8 +578,7 @@ def test_rewrite_md_links_relative(tmp_path):
     """_rewrite_md_links rewrites relative .md hrefs to /?file= viewer URLs."""
     from markdown_viewer.routes import _rewrite_md_links
 
-    child = tmp_path / "child.md"
-    html = f'<a href="child.md">child</a>'
+    html = '<a href="child.md">child</a>'
     result = _rewrite_md_links(html, str(tmp_path))
     assert "/?file=" in result
     assert "child.md" not in result.split("/?file=")[0].split('href="')[-1]
@@ -755,13 +754,16 @@ def test_shutdown_server_returns_200(client):
     """GET /api/shutdown returns 200 (daemon thread exits process after response)."""
     from unittest.mock import patch
 
-    # Patch os._exit so the test process doesn't actually exit
-    with patch("os._exit"):
+    # Patch threading.Thread to prevent the background daemon from ever calling
+    # the real os._exit(0) after our patch context exits. Patching os._exit alone
+    # is racy because the daemon thread sleeps 0.4s before calling it.
+    with patch("markdown_viewer.routes.threading.Thread") as mock_thread, patch("os._exit"):
         response = client.get("/api/shutdown")
 
     assert response.status_code == 200
     data = response.get_json()
     assert data["success"] is True
+    mock_thread.assert_called_once()
 
 
 def test_serve_image_path_traversal_returns_403_explicit(client, tmp_path):
@@ -818,7 +820,7 @@ def test_test_page_exists(client, tmp_path, monkeypatch):
 
     import markdown_viewer.routes as routes_module
 
-    fake_test_html = Path(routes_module.__file__).parent.parent / "test.html"
+    _ = Path(routes_module.__file__).parent.parent / "test.html"
 
     # Use send_file mock to avoid creating a real file on disk
     with (

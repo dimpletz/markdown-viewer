@@ -3,13 +3,10 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 
 def test_check_path_allowed_invalid_path(app_client):
     """_check_path_allowed returns False for invalid paths."""
     from markdown_viewer.favourites_routes import _check_path_allowed
-    from flask import current_app
 
     with app_client.application.test_request_context("/"):
         # Test with path that raises ValueError during resolve()
@@ -44,7 +41,7 @@ def test_check_path_allowed_outside_base(app_client, tmp_path):
 
         # Patch the config to use our specific allowed directory
         with patch.object(app_client.application.config, "get", return_value=str(allowed_dir)):
-            result = _check_path_allowed(str(outside_file))
+            _check_path_allowed(str(outside_file))
 
 
 def test_list_favourites_exception_handling(app_client):

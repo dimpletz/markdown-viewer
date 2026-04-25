@@ -5,9 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.1] - Unreleased
+## [1.3.2] - 2026-04-26
 
 ### Fixed
+- **Word Export**: Port-independent image URL resolution
+  - Fixed bug where Word export failed when backend ran on non-5000 ports (5050, 8080, etc.)
+  - Now converts relative `/api/image` URLs to absolute `http://localhost:{PORT}/api/image` URLs
+  - Backend port is read from `BACKEND_PORT` environment variable and passed to exporter
+  - Added 5 regression tests validating multi-port functionality
 - **PDF Export**: Local images now embed correctly in PDFs instead of appearing as broken links
   - Added `_embed_local_images()` method to convert local file paths to base64 data URLs
   - Resolves relative image paths using markdown file location as base path
@@ -27,14 +32,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Word exporter now uses Playwright for consistent rendering across formats
 - Improved logging for image embedding operations in both PDF and Word exporters
 
+### Security
+- **Fixed High-severity finding**: Added `usedforsecurity=False` to MD5 hashing for cache fingerprints
+  - MD5 used only for non-cryptographic purposes (content hashing for screenshot cache)
+  - Resolves bandit B324 security warning
+- **Hardened path handling**: Uses `tempfile.gettempdir()` instead of hardcoded `/tmp` for cross-platform compatibility
+- **Safe subprocess calls**: Replaced `subprocess.Popen(shell=True)` with `os.startfile()` for browser launching
+- **Vulnerability scan**: 0 High/Critical vulnerabilities (pip-audit, bandit, npm audit)
+
 ### Testing
-- Achieved 83% overall test coverage (348 tests, 100% pass rate)
+- Achieved 83% overall test coverage (370 tests, 100% pass rate)
+- Added 5 regression tests for Word export port fix (`test_word_export_port_fix.py`)
 - Added comprehensive unit tests for database operations (93% coverage)
 - Fixed 3 PDF export test failures (mock signature issues)
-- Code quality: Black formatted, Pylint score 9.86/10
+- Code quality: Black formatted, Pylint score 9.86/10, flake8 clean
 
 ### Documentation
-- Added AUDIT_REPORT.md with comprehensive quality audit findings
+- Added AUDIT_REPORT.md with comprehensive quality audit findings (2 audit runs)
+- Added AGENTS.md with coding standards and 9-step audit workflow
 - Updated README.md with clearer documentation
 - Cleaned database files from git tracking
 

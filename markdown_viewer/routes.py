@@ -273,7 +273,7 @@ def health_check() -> Tuple[Dict[str, Any], int]:
     checks = {
         "api": True,
         "disk_space": check_disk_space(),
-        "temp_dir": os.path.exists(current_app.config.get("TEMP_FOLDER", "/tmp")),
+        "temp_dir": os.path.exists(current_app.config.get("TEMP_FOLDER", tempfile.gettempdir())),
     }
 
     all_healthy = all(checks.values())
@@ -572,8 +572,11 @@ def export_word() -> Tuple[Dict[str, Any], int]:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
             docx_path = tmp.name
 
+        # Get backend port from environment for absolute URL conversion
+        backend_port = int(os.environ.get("BACKEND_PORT", "5000"))
+
         word_exporter = get_word_exporter()
-        word_exporter.export(html_content, markdown_content, docx_path)
+        word_exporter.export(html_content, markdown_content, docx_path, backend_port=backend_port)
 
         response = send_file(
             docx_path,

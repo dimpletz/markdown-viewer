@@ -1,9 +1,5 @@
 """Tests for markdown_viewer.db.database — schema, migrations, FTS5 probe, WAL."""
 
-import sqlite3
-
-import pytest
-
 import markdown_viewer.db.database as db_module
 
 

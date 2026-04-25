@@ -293,8 +293,6 @@ def test_configure_logging_creates_log_dir(tmp_path, monkeypatch):
 
     from markdown_viewer.app import create_app
 
-    log_dir = tmp_path / "logs"
-
     # Patch os.path.exists to return False (logs dir doesn't exist) and os.mkdir to track the call
     real_exists = os.path.exists
     mkdir_calls = []
@@ -317,7 +315,7 @@ def test_configure_logging_creates_log_dir(tmp_path, monkeypatch):
         patch("os.mkdir", side_effect=fake_mkdir),
         patch("logging.handlers.RotatingFileHandler", autospec=True),
     ):
-        app = create_app(
+        create_app(
             {
                 "SECRET_KEY": "test-secret",
                 "TESTING": False,  # triggers configure_logging non-debug path

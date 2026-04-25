@@ -1,10 +1,6 @@
 """Additional tests for database.py to improve coverage."""
 
-import sqlite3
-from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 import markdown_viewer.db.database as db_module
 
@@ -61,7 +57,7 @@ def test_backfill_content_reads_files(tmp_path, monkeypatch, db_conn):
 
     # Insert a favourite with empty content
     db_conn.execute(
-        """INSERT INTO favourites 
+        """INSERT INTO favourites
            (name, path, filename, tags_text, content, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))""",
         ("Test", str(md_file), "test.md", "", ""),
@@ -86,7 +82,7 @@ def test_backfill_content_handles_missing_files(tmp_path, db_conn):
 
     # Insert a favourite for a nonexistent file
     db_conn.execute(
-        """INSERT INTO favourites 
+        """INSERT INTO favourites
            (name, path, filename, tags_text, content, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))""",
         ("Missing", str(missing_file), "nonexistent.md", "", ""),
@@ -112,7 +108,7 @@ def test_backfill_content_truncates_large_files(tmp_path, db_conn):
 
     # Insert favourite
     db_conn.execute(
-        """INSERT INTO favourites 
+        """INSERT INTO favourites
            (name, path, filename, tags_text, content, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))""",
         ("Large", str(large_file), "large.md", "", ""),
@@ -133,7 +129,7 @@ def test_backfill_content_skips_when_no_empty_rows(db_conn):
     """_backfill_content exits early when all favourites have content."""
     # Insert a favourite with existing content
     db_conn.execute(
-        """INSERT INTO favourites 
+        """INSERT INTO favourites
            (name, path, filename, tags_text, content, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))""",
         ("Test", "/fake/path.md", "path.md", "", "existing content"),

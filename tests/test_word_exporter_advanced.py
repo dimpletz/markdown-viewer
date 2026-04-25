@@ -14,8 +14,7 @@ This test file covers:
 
 import os
 import tempfile
-from io import BytesIO
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 import pytest
 from bs4 import BeautifulSoup
 from docx import Document

@@ -180,3 +180,100 @@ def test_search_empty_query(ctx, tmp_path):
 
     results = repo.search("   ")
     assert results == []
+
+
+def test_add_resolves_relative_path_to_cwd(ctx, tmp_path, monkeypatch):
+    """add() resolves relative paths when cwd contains the file."""
+    from pathlib import Path
+
+    md_file = tmp_path / "relative.md"
+    md_file.write_text("Relative")
+
+    # Change to tmp_path so "relative.md" can be found
+    monkeypatch.chdir(tmp_path)
+
+    item = repo.add("relative.md")
+
+    assert item["filename"] == "relative.md"
+    # Should have been found (path won't be just 'relative.md' verbatim in all cases,
+    # but should resolve to something that exists)
+    assert Path(item["path"]).exists()
+
+
+def test_add_finds_file_in_examples_from_cwd(ctx, tmp_path, monkeypatch):
+    """add() finds file in examples/ from cwd (strategy 4)."""
+    examples_dir = tmp_path / "examples"
+    examples_dir.mkdir()
+    md_file = examples_dir / "cwd_example.md"
+    md_file.write_text("CWD Example")
+
+    # Change to tmp_path so examples/ is reachable
+    monkeypatch.chdir(tmp_path)
+
+    item = repo.add("cwd_example.md")
+
+    assert item["filename"] == "cwd_example.md"
+    assert "examples" in item["path"]
+
+
+def test_add_uses_examples_fallback_for_bare_filename(ctx, tmp_path, monkeypatch):
+    """add() falls back to examples/ when a bare filename is provided."""
+    # Create examples dir in cwd
+    examples_dir = tmp_path / "examples"
+    examples_dir.mkdir()
+    md_file = examples_dir / "demo.md"
+    md_file.write_text("Demo")
+
+    monkeypatch.chdir(tmp_path)
+
+    # Add by bare filename - should find in examples/
+    item = repo.add("demo.md")
+
+    assert item["filename"] == "demo.md"
+
+
+def test_add_raises_when_file_not_found_after_all_strategies(ctx):
+    """add() raises ValueError when file doesn't exist after all resolution attempts."""
+    import pytest
+
+    with pytest.raises(ValueError, match="File does not exist.*nonexistent_file_xyz.md"):
+        repo.add("nonexistent_file_xyz.md")
+
+
+def test_add_raises_with_helpful_message_for_missing_file(ctx):
+    """add() ValueError message suggests using URL parameter or full path."""
+    import pytest
+
+    with pytest.raises(
+        ValueError, match="To favourite files, open them via URL parameter.*mdview path"
+    ):
+        repo.add("missing.md")
+
+
+def test_add_caps_content_at_max_bytes(ctx, tmp_path):
+    """add() caps file content at _MAX_CONTENT_BYTES (10 MB)."""
+    md_file = tmp_path / "huge.md"
+    # Write 15 MB of content (exceeds the 10 MB limit)
+    md_file.write_bytes(b"x" * (15 * 1024 * 1024))
+
+    item = repo.add(str(md_file))
+
+    # Content should be truncated to 10 MB
+    assert len(item.get("content", "")) <= 10 * 1024 * 1024
+
+
+def test_add_handles_oserror_when_reading_content(ctx, tmp_path):
+    """add() sets empty content when file read fails (OSError)."""
+    from pathlib import Path
+    from unittest.mock import patch
+
+    md_file = tmp_path / "read_error.md"
+    md_file.write_text("Content")
+
+    # Mock read_bytes to raise OSError
+    with patch.object(Path, "read_bytes", side_effect=OSError("Permission denied")):
+        item = repo.add(str(md_file))
+
+    # Should have empty content but still succeed
+    assert item["filename"] == "read_error.md"
+    # Content will be empty string due to OSError

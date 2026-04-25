@@ -19,7 +19,6 @@ import urllib.parse
 from datetime import datetime
 from typing import Optional, Dict, Any
 from io import BytesIO
-from pathlib import Path
 
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
@@ -51,9 +50,20 @@ class WordExporter:
     def _ensure_browser(self):
         """Initialize Playwright browser if not already running."""
         if self.playwright is None:
-            self.playwright = sync_playwright().start()
-            self.browser = self.playwright.chromium.launch(headless=True)
-            logger.info("Playwright browser launched for Word export")
+            try:
+                self.playwright = sync_playwright().start()
+                self.browser = self.playwright.chromium.launch(headless=True)
+                logger.info("Playwright browser launched for Word export")
+            except Exception as e:
+                logger.error("Failed to launch Playwright browser: %s", e, exc_info=True)
+                # Clean up partial initialization
+                if self.playwright:
+                    try:
+                        self.playwright.stop()
+                    except Exception:
+                        pass
+                    self.playwright = None
+                raise RuntimeError(f"Failed to initialize browser for Word export: {e}") from e
 
     def _load_html(self, html_content: str):
         """Load HTML into browser for rendering."""
@@ -183,7 +193,7 @@ class WordExporter:
         theme: 'default',
         securityLevel: 'loose'
     }});
-    
+
     // Render KaTeX math
     document.querySelectorAll('.arithmatex').forEach(function(el) {{
         var math = el.textContent;
@@ -199,7 +209,7 @@ class WordExporter:
             console.error('KaTeX error:', e);
         }}
     }});
-    
+
     // Render Mermaid diagrams
     (async function() {{
         var diagrams = document.querySelectorAll('.mermaid');
@@ -225,24 +235,28 @@ class WordExporter:
             f.write(full_html)
             self.temp_html_path = f.name
 
-        # Create new page with high DPI for crisp screenshots
-        context = self.browser.new_context(device_scale_factor=2)
-        self.page = context.new_page()
-
-        # Load HTML and wait for network to be idle (scripts loaded)
-        self.page.goto(f"file://{self.temp_html_path}", wait_until="networkidle")
-
-        # Wait for rendering (KaTeX, Mermaid async rendering)
-        # Mermaid uses async await, so needs more time
-        self.page.wait_for_timeout(5000)
-
-        # Wait for KaTeX elements to appear (if any math exists)
         try:
-            self.page.wait_for_selector(".katex, .mermaid svg", timeout=3000)
-        except Exception:
-            pass  # No math or diagrams present
+            # Create new page with high DPI for crisp screenshots
+            context = self.browser.new_context(device_scale_factor=2)
+            self.page = context.new_page()
 
-        logger.info("HTML loaded and rendered in browser")
+            # Load HTML and wait for network to be idle (scripts loaded)
+            self.page.goto(f"file://{self.temp_html_path}", wait_until="networkidle")
+
+            # Wait for rendering (KaTeX, Mermaid async rendering)
+            # Mermaid uses async await, so needs more time
+            self.page.wait_for_timeout(5000)
+
+            # Wait for KaTeX elements to appear (if any math exists)
+            try:
+                self.page.wait_for_selector(".katex, .mermaid svg", timeout=3000)
+            except Exception:
+                pass  # No math or diagrams present
+
+            logger.info("HTML loaded and rendered in browser")
+        except Exception as e:
+            logger.error("Failed to load HTML in browser: %s", e, exc_info=True)
+            raise RuntimeError(f"Failed to render HTML in browser: {e}") from e
 
     def _screenshot_element(self, selector: str, content_hash: str) -> Optional[bytes]:
         """
@@ -309,6 +323,10 @@ class WordExporter:
             except OSError as e:
                 logger.warning("Failed to delete temp HTML: %s", e)
 
+    def close(self):
+        """Public cleanup method called by Flask teardown."""
+        self._cleanup()
+
     def export(
         self,
         html_content: str,
@@ -316,6 +334,7 @@ class WordExporter:
         output_path: str,
         md_file_path: Optional[str] = None,
         options: Optional[Dict[str, Any]] = None,
+        backend_port: Optional[int] = None,
     ) -> None:
         """
         Export content to Word document with pixel-perfect math and diagram rendering.
@@ -326,12 +345,24 @@ class WordExporter:
             output_path: Path to save .docx file
             md_file_path: Optional path to source markdown file for resolving relative images
             options: Optional export options
+            backend_port: Backend server port for converting relative /api URLs to absolute
         """
         if options is None:
             options = {}
 
         # Store md_file_path for image resolution
         self.md_file_path = md_file_path
+
+        # Convert relative /api/image URLs to absolute http://localhost:port/api/image
+        # This is critical because Playwright loads HTML via file:// protocol where
+        # relative URLs don't work. Port defaults to 5000 if not provided.
+        port = backend_port or 5000
+        html_content = html_content.replace(
+            'src="/api/image', f'src="http://localhost:{port}/api/image'
+        )
+        html_content = html_content.replace(
+            "src='/api/image", f"src='http://localhost:{port}/api/image"
+        )
 
         try:
             # Load HTML into browser for screenshot capability
@@ -567,9 +598,9 @@ class WordExporter:
         selector = f"#math_element_{self.math_counter}"
         self.math_counter += 1
 
-        # Generate cache key from content
+        # Generate cache key from content (non-cryptographic fingerprint)
         content = element.get_text().strip()
-        content_hash = hashlib.md5(content.encode()).hexdigest()
+        content_hash = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
 
         # Take screenshot
         screenshot_bytes = self._screenshot_element(selector, content_hash)
@@ -611,9 +642,9 @@ class WordExporter:
         selector = f"#math_element_{self.math_counter}"
         self.math_counter += 1
 
-        # Generate cache key from content
+        # Generate cache key from content (non-cryptographic fingerprint)
         content = element.get_text().strip()
-        content_hash = hashlib.md5(content.encode()).hexdigest()
+        content_hash = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
 
         # Take screenshot
         screenshot_bytes = self._screenshot_element(selector, content_hash)
@@ -647,7 +678,7 @@ class WordExporter:
 
         # Generate cache key from content
         content = element.get_text().strip()
-        content_hash = hashlib.md5(content.encode()).hexdigest()
+        content_hash = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
 
         # Take screenshot
         screenshot_bytes = self._screenshot_element(selector, content_hash)

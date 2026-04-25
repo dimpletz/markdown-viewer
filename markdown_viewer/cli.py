@@ -255,7 +255,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             color: #0550ae;
             text-decoration: underline;
         }}
-        
+
         /* Single line spacing overrides for all elements */
         .markdown-body h1,
         .markdown-body h2,
@@ -638,7 +638,8 @@ def _open_flask_dashboard(port: int = 5000, browser: Optional[str] = None) -> No
                 stderr=subprocess.DEVNULL,
             )
     elif sys.platform == "win32":
-        subprocess.Popen(f'start "" "{url}"', shell=True)  # pylint: disable=consider-using-with
+        # Use os.startfile (ShellExecute) to open URL with default browser; avoids shell=True.
+        os.startfile(url)  # noqa: S606  # nosec B606
     else:
         webbrowser.open(url)
 
@@ -757,9 +758,9 @@ def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] 
                 stderr=subprocess.DEVNULL,
             )
     elif sys.platform == "win32":
-        # ShellExecute via `start` brings the browser window to the foreground;
+        # ShellExecute via os.startfile brings the browser window to the foreground;
         # webbrowser.open() only flashes the taskbar when the browser is already running.
-        subprocess.Popen(f'start "" "{url}"', shell=True)  # pylint: disable=consider-using-with
+        os.startfile(url)  # noqa: S606  # nosec B606
     else:
         webbrowser.open(url)
 

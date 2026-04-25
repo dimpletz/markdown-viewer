@@ -318,7 +318,7 @@ def test_embed_local_images_png(tmp_path):
 
     from markdown_viewer.cli import _embed_local_images
 
-    html = f'<img src="photo.png" alt="photo">'
+    html = '<img src="photo.png" alt="photo">'
     result = _embed_local_images(html, tmp_path)
     assert result.startswith('<img src="data:image/png;base64,')
 

@@ -2,7 +2,6 @@
 
 # pylint: disable=redefined-outer-name
 import pytest
-from pathlib import Path
 
 from markdown_viewer.processors.markdown_processor import MarkdownProcessor
 

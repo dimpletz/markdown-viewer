@@ -3,11 +3,8 @@ Focused cli.py tests to boost coverage to 90%+.
 Simple, effective tests without complex mocking.
 """
 
-import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from markdown_viewer.cli import _embed_local_images, _stop_server, _resolve_file
 

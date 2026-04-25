@@ -1,7 +1,5 @@
 """Tests for the favourites Flask blueprint (/api/favourites endpoints)."""
 
-import pytest
-
 
 def test_list_empty(app_client):
     """GET /api/favourites returns empty list initially."""
