@@ -33,6 +33,8 @@ Markdown Viewer is a cross-platform desktop + CLI markdown rendering app. **Back
 - Never bypass DOMPurify, CSRF tokens, or marshmallow schema validation.
 - Never hardcode secrets; use env vars (`SECRET_KEY`, `BACKEND_PORT`, `ALLOWED_DOCUMENTS_DIR`).
 - Never modify `pyproject.toml` deps, `package.json` deps, or CI workflows without my approval.
+- **Never create virtual environments** — Poetry manages dependencies; no `.venv`, `.venv-*`, or `venv/` folders needed.
+- **Always delete all content in `dist/` folder before publishing** to ensure a clean build (e.g., `rm -rf dist/*` or `Remove-Item -Recurse -Force dist\*` before `poetry publish --build`).
 - When you create or discover new files/folders, update the Tree above.
 
 ### Coding Standards (apply per language)
@@ -58,6 +60,7 @@ When I say **"audit"**, perform the following sequence in order, stopping only o
    - Remove dead code, unreachable branches, unused imports, unused variables, commented-out blocks.
    - Drop helper functions/methods that exist only for one-shot debugging.
    - Clear stale entries from `markdown_viewer/temp/` and `markdown_viewer/uploads/` if they are not fixtures.
+   - Remove any virtual environment folders (`.venv`, `.venv-*`, `venv/`, etc.) — Poetry manages deps without venvs.
 
 2. **Format & Lint**
    - Run `black .` (Python).
@@ -119,3 +122,8 @@ When I say **"audit"**, perform the following sequence in order, stopping only o
   Example: `Use playwright sync API in exporters; async API leaks Chromium handles (learned 4/24)`
 - When **3+ related notes** accumulate on a topic, create a new file under `docs/` (e.g., `docs/testing-strategy.md`, `docs/security-conventions.md`), move the notes there with a `## Session learnings` section, and update the Tree.
 - Keep this file under ~150 lines; trim or graduate stale rules.
+
+
+## Session learnings
+
+- Audit cleanup step now explicitly checks for duplicate virtual environments (.venv-1, .venv-2, etc.) - previously only caught generic temp files (learned 4/26)
