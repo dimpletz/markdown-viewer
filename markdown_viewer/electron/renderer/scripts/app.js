@@ -119,6 +119,7 @@ class MarkdownViewerApp {
     const pdfAvailable = health.capabilities?.pdf_export !== false;
     if (!pdfAvailable) {
       this.btnExportPdf.style.display = "none";
+      this.btnExportWord.style.display = "none";
     }
     // Notify FavouritesManager that the backend is ready (R1)
     document.dispatchEvent(new CustomEvent("backend:ready"));
