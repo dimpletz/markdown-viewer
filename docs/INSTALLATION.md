@@ -44,8 +44,8 @@ cd markdown-viewer
 # Install dependencies
 poetry install
 
-# Install Playwright browsers (required for PDF export)
-poetry run playwright install
+# Install Playwright browsers (required for PDF/Word export)
+poetry run playwright install chromium
 ```
 
 #### Step 3: Install Electron Dependencies
@@ -98,10 +98,10 @@ pip install dist/markdown_viewer-1.0.0-py3-none-any.whl
 #### Step 3: Install Additional Dependencies
 
 ```bash
-# Install Playwright browsers
-playwright install
+# Install Playwright browsers (required for PDF/Word export)
+playwright install chromium
 
-# Install Electron dependencies
+# Install Electron dependencies (optional, for GUI)
 cd markdown_viewer/electron
 npm install
 cd ../..
@@ -167,6 +167,23 @@ sudo playwright install
 sudo playwright install-deps
 playwright install
 ```
+
+### Word/PDF Export Errors
+
+If you get "RuntimeError: Failed to initialize browser" when exporting:
+
+```bash
+# Install Playwright Chromium browser (required for exports)
+playwright install chromium
+```
+
+**Symptoms:**
+- Word export returns 500 error with "RuntimeError" 
+- PDF export fails with browser initialization error
+- Error message: "Failed to initialize browser for Word export"
+
+**Solution:**
+Run `playwright install chromium` once after installation. This downloads the Chromium browser (~140 MB) that Playwright uses to render math equations and diagrams.
 
 ### Electron Won't Start
 

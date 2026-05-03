@@ -21,7 +21,7 @@ pip install markdown-viewer-app
 playwright install chromium
 ```
 
-> `playwright install chromium` is a **one-time setup** (~140 MB) required for PDF export. Skip it if you don't need PDF export.
+> `playwright install chromium` is a **one-time setup** (~140 MB) required for PDF/Word export. Skip it if you don't need export features.
 
 ---
 ## 🚀 Quick Start
@@ -396,7 +396,7 @@ markdown-viewer/
 ---
 ## 🐛 Known Limitations
 
-- PDF export requires `playwright install chromium` (one-time ~140 MB download)
+- PDF/Word export requires `playwright install chromium` (one-time ~140 MB download)
 - Translation requires an internet connection
 - Word export has limited support for complex CSS styling
 
