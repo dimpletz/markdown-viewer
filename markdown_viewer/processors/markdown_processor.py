@@ -82,7 +82,7 @@ class MarkdownProcessor:  # pylint: disable=too-few-public-methods
             "markdown.extensions.toc": {
                 "permalink": False,
                 "marker": "[TOC]",
-                "toc_depth": "2-6",
+                "toc_depth": "1-6",
                 "title": "Table of Contents",
             },
             "codehilite": {"css_class": "highlight", "linenums": False},
