@@ -16,12 +16,66 @@ Open any markdown file in a full browser UI with one command. Supports PDF and W
 
 ## 📦 Installation
 
+### Quick Install (For Technical Users)
+
 ```bash
 pip install markdown-viewer-app
 playwright install chromium
 ```
 
 > `playwright install chromium` is a **one-time setup** (~140 MB) required for PDF/Word export. Skip it if you don't need export features.
+
+### Step-by-Step Guide (For Everyone)
+
+**Step 1: Install Python (if you don't have it)**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/) and download Python 3.9 or newer
+2. Run the installer — **check the box** "Add Python to PATH" before clicking Install
+3. Verify by opening Terminal (Mac/Linux) or Command Prompt (Windows) and typing: `python --version`
+
+**Step 2: Install Markdown Viewer**
+
+Open your **Terminal** (Mac/Linux) or **Command Prompt** (Windows):
+
+- **Windows**: Press `Windows Key + R`, type `cmd`, press Enter
+- **Mac**: Press `Cmd + Space`, type "Terminal", press Enter  
+- **Linux**: Press `Ctrl + Alt + T`
+
+Then type this command and press Enter:
+
+```bash
+pip install markdown-viewer-app
+```
+
+Wait for it to finish (you'll see "Successfully installed...").
+
+**Step 3: Enable PDF & Word Export (Optional)**
+
+If you want to export your markdown files to PDF or Word documents, run this **one-time** command in the same Terminal/Command Prompt:
+
+```bash
+playwright install chromium
+```
+
+This downloads browser files (~140MB). It might take a few minutes depending on your internet speed.
+
+**Step 4: Verify It Works**
+
+In the Terminal/Command Prompt, type:
+
+```bash
+mdview --version
+```
+
+You should see the version number. You're ready to go! 🎉
+
+**Step 5: Open Your First File**
+
+```bash
+mdview path/to/your/file.md
+```
+
+Replace `path/to/your/file.md` with the actual path to your markdown file. The file will open in your browser automatically.
 
 ---
 ## 🚀 Quick Start
@@ -408,6 +462,165 @@ markdown-viewer/
 - [Installation Guide](docs/INSTALLATION.md)
 - [Security Policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
+
+---
+## ❓ Troubleshooting
+
+### "How do I open Terminal or Command Prompt?"
+
+**Windows:**
+1. Press `Windows Key + R` on your keyboard
+2. Type `cmd` and press Enter
+3. A black window will open — this is Command Prompt
+
+Alternative: Right-click the Start menu → choose "Terminal" or "Command Prompt"
+
+**Mac:**
+1. Press `Cmd + Space` to open Spotlight
+2. Type "Terminal" and press Enter
+3. A window will open with white text on black background
+
+**Linux:**
+1. Press `Ctrl + Alt + T` (works on most distributions)
+2. Or search for "Terminal" in your application menu
+
+### "The command 'playwright' is not found"
+
+This usually means the Playwright Python package isn't installed. **Playwright is included** when you run `pip install markdown-viewer-app`, but the browser binaries are not.
+
+**Fix:**
+1. First verify Playwright is installed:
+   ```bash
+   pip show playwright
+   ```
+   If you see version information, Playwright is installed.
+
+2. If not installed, run:
+   ```bash
+   pip install playwright
+   ```
+
+3. Then install the browser:
+   ```bash
+   playwright install chromium
+   ```
+
+### "PDF/Word export buttons are missing in the app"
+
+This means Playwright browser binaries are not installed yet.
+
+**You'll see a blue banner** at the top of the app with installation instructions. If you dismissed it:
+
+1. Open Terminal/Command Prompt (see above)
+2. Run: `playwright install chromium`
+3. Wait for the download to finish (~140MB, takes 2-5 minutes)
+4. Refresh the page (`F5` or `Ctrl+R`)
+5. Export buttons will appear
+
+**To test if it worked:**
+```bash
+mdview yourfile.md --export-pdf
+```
+
+If the PDF is created successfully, it worked! ✅
+
+### "RuntimeError: Failed to initialize browser"
+
+This error means Playwright browser binaries are missing or corrupted.
+
+**Fix:**
+```bash
+playwright install chromium --force
+```
+
+The `--force` flag will re-download even if browsers exist.
+
+### "Page.goto: Timeout exceeded"
+
+This can happen if:
+- Your internet connection is slow or unstable
+- External fonts or resources are taking too long to load
+- Browser extensions are interfering
+
+**Fixes:**
+1. **Close unnecessary browser tabs** (reduces memory pressure)
+2. **Disable browser extensions temporarily**
+3. **Try again** — the second attempt is usually faster
+4. **Check your internet connection**
+
+If it persists, the export might still work — check if the PDF/Word file was created despite the error message.
+
+### "How do I find the path to my markdown file?"
+
+**Windows:**
+1. Open File Explorer and find your file
+2. Hold `Shift` and right-click the file
+3. Choose "Copy as path"
+4. Paste into the command: `mdview <paste here>`
+
+**Mac:**
+1. Find your file in Finder
+2. Right-click → hold `Option` key → choose "Copy ... as Pathname"
+3. Paste into Terminal: `mdview <paste here>`
+
+**Or just drag the file:**
+- Type `mdview ` (with a space at the end)
+- Drag your markdown file into the Terminal/Command Prompt window
+- The path will appear automatically
+- Press Enter
+
+### "The app says 'mdview' is not recognized"
+
+This means Python scripts are not in your PATH.
+
+**Windows Fix:**
+1. Reinstall Python from [python.org](https://www.python.org/downloads/)
+2. **Check "Add Python to PATH"** during installation
+3. After reinstalling, close and reopen Command Prompt
+4. Try `mdview --version` again
+
+**Mac/Linux Fix:**
+```bash
+python3 -m pip install --user markdown-viewer-app
+```
+
+Then use: `python3 -m markdown_viewer.cli yourfile.md` instead of `mdview`
+
+### "Port 5000 is already in use"
+
+Another program is using port 5000.
+
+**Solution 1: Use a different port**
+```bash
+mdview yourfile.md --port 8080
+```
+
+**Solution 2: Stop the background server first**
+```bash
+mdview --stop
+```
+
+Then try again.
+
+### "ERR_UNSAFE_PORT in browser"
+
+Chrome/Edge block certain ports for security (e.g., 6000-6063, 6665-6669).
+
+**Fix: Use a safe port**
+```bash
+mdview yourfile.md --port 8080
+```
+
+Safe ports: 5001, 8000, 8080, 3000, 9000
+
+### Still having issues?
+
+1. Check the [Installation Guide](docs/INSTALLATION.md) for detailed setup steps
+2. Open an issue on [GitHub](https://github.com/dimpletz/markdown-viewer/issues) with:
+   - Your operating system (Windows 10, Mac, Ubuntu, etc.)
+   - Python version (`python --version`)
+   - Full error message
+   - What you were trying to do
 
 ---
 ## 🤝 Contributing
