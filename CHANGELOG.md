@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-05-03
+
+### Fixed
+- **Vendor JavaScript Loading**: Fixed 404 errors for vendor libraries (axios, marked, mermaid, katex, purify)
+  - Added missing Flask route `/vendor/<path:filename>` in `app.py` to serve vendor assets
+  - All frontend libraries now load correctly from local vendor directory
+  - Added cache headers (`Cache-Control: public, max-age=31536000`) for optimal performance
+- **Content Security Policy (CSP)**: Eliminated inline script violation in browser UI
+  - Moved legacy browser check from inline `<script>` tag to external `scripts/legacy-check.js`
+  - Application now fully compliant with strict CSP headers
+  - Zero CSP violations in browser console
+
+### Security
+- **Comprehensive Audit**: Completed full 9-step audit per AGENTS.md workflow
+  - 85% test coverage (468/468 tests passing)
+  - 0 High/Critical vulnerabilities (pip-audit, bandit, npm audit)
+  - Code quality: 9.77/10 (Pylint)
+  - All security headers validated (CSP, X-Frame-Options, X-Content-Type-Options)
+
+## [1.3.3] - 2026-04-27
+
+### Added
+- **Integration Test Suite**: Added end-to-end tests under `tests/integration/` for render/export workflows, favourites CRUD/search, translation, and security controls.
+- **Regression Test Suite**: Added persistent bug-guard tests under `tests/regression/` for known issues (Word export port handling, vendor/CSP regressions, image endpoint filtering, and path handling).
+- **Renderer Vendor Guardrails**: Added `scripts/sync_renderer_vendor.py` and `tests/test_renderer_vendor.py` to keep browser assets local and assert no CDN/source-map regressions.
+
+### Changed
+- **Audit Workflow**: Updated `AGENTS.md` audit command to explicitly run both `pytest tests/integration/ tests/regression/ -v` and `pytest tests/ -v`.
+- **Renderer Assets**: Refreshed vendored frontend assets in `markdown_viewer/electron/renderer/vendor/` and aligned local loading expectations with CSP-safe behavior.
+
+### Fixed
+- **Lint Hygiene**: Resolved integration-test lint issues (unused imports) so `flake8 markdown_viewer tests` passes cleanly for publish validation.
+- **Release Readiness Docs**: Updated audit/security documentation to capture current scan outcomes and accepted risk notes before publish.
+
 ## [1.3.2] - 2026-04-26
 
 ### Fixed

@@ -69,3 +69,24 @@ We will respond within 48 hours and provide a timeline for a fix.
 - [ ] Logs are monitored for suspicious activity
 - [ ] Dependencies are up to date
 - [ ] Electron is packaged with latest security patches
+
+## Accepted Findings (2026-04-27 Audit)
+
+The following findings were reviewed and accepted for now, with monitoring:
+
+1. Python dependency advisory (`pip-audit`)
+- Package: `pip 26.0.1`
+- Advisory: `CVE-2026-3219`
+- Reason accepted: tool reported no fix version at audit time; this affects local packaging/tooling, not runtime application request handling.
+- Mitigation: monitor for patched `pip` release and upgrade promptly.
+
+2. JavaScript dependency advisories (`npm audit --omit=dev`)
+- Package chain: `mermaid` -> `uuid <14.0.0`
+- Severity: 2 moderate
+- Reason accepted: fix path requires breaking dependency changes; current risk is limited to client-side diagram rendering context.
+- Mitigation: track upstream mermaid/uuid updates and re-audit on next dependency refresh cycle.
+
+3. Source scan findings (`bandit`)
+- Medium findings: `B310` (`urllib.request.urlopen`) in `markdown_viewer/exporters/word_exporter.py`
+- Reason accepted: used for remote image retrieval workflow; no high/critical findings remain.
+- Mitigation: keep strict input validation on URL sources and re-review during exporter refactor.

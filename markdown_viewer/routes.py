@@ -16,6 +16,7 @@ from typing import Dict, Any, Tuple
 
 from flask import Blueprint, request, jsonify, send_file, current_app, g
 from marshmallow import Schema, fields, validate, ValidationError
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 from .processors.markdown_processor import MarkdownProcessor
 from .exporters.pdf_exporter import PDFExporter
@@ -530,6 +531,21 @@ def export_pdf() -> Tuple[Dict[str, Any], int]:
             ),
             400,
         )
+    except RequestEntityTooLarge:
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                os.unlink(pdf_path)
+            except OSError:
+                pass  # Best effort cleanup
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {"message": "Payload too large", "type": "RequestEntityTooLarge"},
+                }
+            ),
+            413,
+        )
     except Exception as e:
         if pdf_path and os.path.exists(pdf_path):
             try:
@@ -615,6 +631,21 @@ def export_word() -> Tuple[Dict[str, Any], int]:
                 }
             ),
             400,
+        )
+    except RequestEntityTooLarge:
+        if docx_path and os.path.exists(docx_path):
+            try:
+                os.unlink(docx_path)
+            except OSError:
+                pass  # Best effort cleanup
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": {"message": "Payload too large", "type": "RequestEntityTooLarge"},
+                }
+            ),
+            413,
         )
     except Exception as e:
         if docx_path and os.path.exists(docx_path):

@@ -16,8 +16,12 @@ Markdown Viewer is a cross-platform desktop + CLI markdown rendering app. **Back
 - markdown_viewer/translators/ — content translator
 - markdown_viewer/utils/ — file_handler + helpers
 - markdown_viewer/electron/ — Electron shell (main.js, preload.js, renderer/)
-- tests/ — pytest suite (unit + integration); mirrors package layout
-- scripts/ — install.bat/install.sh, setup_electron.py
+- markdown_viewer/electron/renderer/vendor/ — vendored frontend assets (marked, mermaid, katex, highlight.js, axios, DOMPurify)
+- tests/ — pytest suite (unit + integration + regression); mirrors package layout
+- tests/integration/ — end-to-end route/service workflows (render/export, favourites, translate, security)
+- tests/regression/ — permanent bug-guard tests for previously fixed defects
+- tests/test_renderer_vendor.py — validates local vendor-only frontend assets and no source-map directives
+- scripts/ — install.bat/install.sh, setup_electron.py, sync_renderer_vendor.py
 - docs/ — user-facing docs (CLI usage, install, exports)
 - examples/ — sample markdown demos
 - pyproject.toml — Python build, deps, tool config (black, pytest, coverage)
@@ -83,7 +87,9 @@ When I say **"audit"**, perform the following sequence in order, stopping only o
    - Add or extend integration tests under `tests/integration/` (create folder if missing) covering: end-to-end render → export PDF, render → export Word, file open with path-traversal attempts, favourites CRUD, translate workflow.
    - Add regression tests for any bug fixed since the last audit.
    - Add applicable smoke, contract, and security tests (e.g., CSRF enforcement, oversized payload rejection).
-   - Run the full test suite and ensure all pass.
+   - Run integration + regression suites explicitly: `pytest tests/integration/ tests/regression/ -v`.
+   - Run the full test suite explicitly: `pytest tests/ -v`.
+   - Ensure both runs pass.
 
 6. **Non-Functional Requirements (NFRs)** — verify and document:
    - **Performance**: render of 1MB markdown < 2s; profile hot paths if regressed.
@@ -127,3 +133,8 @@ When I say **"audit"**, perform the following sequence in order, stopping only o
 ## Session learnings
 
 - Audit cleanup step now explicitly checks for duplicate virtual environments (.venv-1, .venv-2, etc.) - previously only caught generic temp files (learned 4/26)
+- Running prettier recursively over renderer/vendor rewrites large vendored/minified assets; prefer scoping formatter targets away from vendor bundles during audits (learned 4/27)
+- Publish prep should bump both `pyproject.toml` and `package.json` versions together to keep Python and Electron release metadata aligned (learned 4/27)
+- Browser extension errors ("Could not establish connection. Receiving end does not exist.") are harmless IPC noise from password managers/ad blockers; not application errors - verify with /health endpoint instead (learned 5/3)
+- When Flask route changes don't take effect despite restarts, check for duplicate Python processes on the port using netstat - old servers can shadow new code (learned 5/3)
+- Vendor file 404s require explicit Flask route registration; static_folder alone doesn't auto-serve nested vendor/ paths - add @app.route manually (learned 5/3)

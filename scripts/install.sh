@@ -40,6 +40,12 @@ else
         echo "Warning: Failed to install Electron dependencies"
         echo "GUI may not work properly"
     }
+    echo "Synchronizing local renderer vendor assets..."
+    cd ../../scripts
+    python3 sync_renderer_vendor.py || {
+        echo "Warning: Failed to synchronize renderer vendor assets"
+        echo "The app may fall back to stale vendor files"
+    }
     cd ../../..
     echo "Electron dependencies installed successfully"
 fi

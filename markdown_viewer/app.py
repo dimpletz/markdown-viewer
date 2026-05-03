@@ -213,6 +213,12 @@ def create_app(config: Optional[Dict[str, Any]] = None) -> Flask:  # pylint: dis
         resp.headers["Cache-Control"] = "no-store"
         return resp
 
+    @ui_bp.route("/vendor/<path:filename>")
+    def renderer_vendor(filename):
+        resp = make_response(send_from_directory(os.path.join(renderer_dir, "vendor"), filename))
+        resp.headers["Cache-Control"] = "public, max-age=31536000"  # Cache vendor files for 1 year
+        return resp
+
     app.register_blueprint(ui_bp)
 
     # Register error handlers

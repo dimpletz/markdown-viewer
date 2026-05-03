@@ -50,6 +50,13 @@ if %errorlevel% neq 0 (
         echo Warning: Failed to install Electron dependencies
         echo GUI may not work properly
     )
+    echo Synchronizing local renderer vendor assets...
+    cd ..\..\scripts
+    python sync_renderer_vendor.py
+    if %errorlevel% neq 0 (
+        echo Warning: Failed to synchronize renderer vendor assets
+        echo The app may fall back to stale vendor files
+    )
     cd ..\..\..
 )
 

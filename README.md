@@ -181,6 +181,14 @@ mdview --version
 - Input validation with Marshmallow schemas
 - Path traversal protection
 - Localhost-only server binding (127.0.0.1)
+
+### 📚 Frontend Asset Policy (No CDN at Runtime)
+- The Electron renderer does **not** fetch JS/CSS libraries from external CDNs at runtime.
+- Frontend libraries are vendored locally under `markdown_viewer/electron/renderer/vendor/`.
+- This avoids CSP `connect-src` violations, improves reliability in restricted networks, and keeps the UI functional offline.
+- Source map references are stripped from vendored assets to prevent blocked `.map` fetch noise in the console.
+- When upgrading frontend library versions, update the files in `renderer/vendor/` and keep `index.html` script/style references local.
+
 ### 🔗 Local File Navigation
 - Both **relative** and **absolute** paths to `.md` files open the target inside the viewer — no 404s:
   ```markdown

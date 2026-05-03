@@ -21,12 +21,22 @@ def main():
         sys.exit(1)
 
     print(f"Installing Electron dependencies in {electron_dir}...")
+    sync_script = Path(__file__).parent / "sync_renderer_vendor.py"
 
     try:
         # Install npm dependencies
         subprocess.run(["npm", "install"], cwd=electron_dir, check=True, capture_output=False)
 
+        # Synchronize renderer vendor assets from local node_modules
+        subprocess.run(
+            [sys.executable, str(sync_script)],
+            cwd=Path(__file__).parent.parent,
+            check=True,
+            capture_output=False,
+        )
+
         print("\n✅ Electron dependencies installed successfully!")
+        print("✅ Renderer vendor assets synchronized successfully!")
         print("\nYou can now run the application with:")
         print("  poetry run markdown-viewer")
         print("  or")

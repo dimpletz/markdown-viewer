@@ -2,9 +2,9 @@
  * Main Electron process
  */
 
-const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
-const path = require('path');
-const fs = require('fs');
+const { app, BrowserWindow, Menu, dialog, ipcMain } = require("electron");
+const path = require("path");
+const fs = require("fs");
 
 let mainWindow;
 const BACKEND_PORT = process.env.BACKEND_PORT || 5000;
@@ -15,18 +15,23 @@ const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
  * Returns { valid: true, resolvedPath } or { valid: false, error }.
  */
 function validateFilePath(filePath) {
-  const os = require('os');
+  const os = require("os");
   const allowedDir = process.env.ALLOWED_DOCUMENTS_DIR || os.homedir();
   const resolvedPath = path.resolve(filePath);
   const resolvedAllowed = path.resolve(allowedDir);
 
   const normalizedPath = resolvedPath.toLowerCase();
-  const normalizedAllowed = (resolvedAllowed.endsWith(path.sep)
-    ? resolvedAllowed
-    : resolvedAllowed + path.sep).toLowerCase();
+  const normalizedAllowed = (
+    resolvedAllowed.endsWith(path.sep)
+      ? resolvedAllowed
+      : resolvedAllowed + path.sep
+  ).toLowerCase();
 
   if (!normalizedPath.startsWith(normalizedAllowed)) {
-    return { valid: false, error: 'Access denied: path outside allowed directory' };
+    return {
+      valid: false,
+      error: "Access denied: path outside allowed directory",
+    };
   }
   return { valid: true, resolvedPath };
 }
@@ -40,23 +45,23 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, "preload.js"),
     },
-    icon: path.join(__dirname, 'assets', 'icon.png')
+    icon: path.join(__dirname, "assets", "icon.png"),
   });
 
   // Load the index.html
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, "renderer", "index.html"));
 
   // Create application menu
   createMenu();
 
   // Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === "development") {
     mainWindow.webContents.openDevTools();
   }
 
-  mainWindow.on('closed', function () {
+  mainWindow.on("closed", function () {
     mainWindow = null;
   });
 }
@@ -64,114 +69,117 @@ function createWindow() {
 function createMenu() {
   const template = [
     {
-      label: 'File',
+      label: "File",
       submenu: [
         {
-          label: 'Open',
-          accelerator: 'CmdOrCtrl+O',
+          label: "Open",
+          accelerator: "CmdOrCtrl+O",
           click: () => {
             openFile();
-          }
+          },
         },
         {
-          label: 'Export',
+          label: "Export",
           submenu: [
             {
-              label: 'Export as PDF',
+              label: "Export as PDF",
               click: () => {
-                mainWindow.webContents.send('export-pdf');
-              }
+                mainWindow.webContents.send("export-pdf");
+              },
             },
             {
-              label: 'Export as Word',
+              label: "Export as Word",
               click: () => {
-                mainWindow.webContents.send('export-word');
-              }
-            }
-          ]
+                mainWindow.webContents.send("export-word");
+              },
+            },
+          ],
         },
-        { type: 'separator' },
+        { type: "separator" },
         {
-          label: 'Exit',
-          accelerator: 'CmdOrCtrl+Q',
+          label: "Exit",
+          accelerator: "CmdOrCtrl+Q",
           click: () => {
             app.quit();
-          }
-        }
-      ]
+          },
+        },
+      ],
     },
     {
-      label: 'Edit',
+      label: "Edit",
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' }
-      ]
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
     },
     {
-      label: 'View',
+      label: "View",
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
     },
     {
-      label: 'Tools',
+      label: "Tools",
       submenu: [
         {
-          label: 'Translate',
+          label: "Translate",
           click: () => {
-            mainWindow.webContents.send('show-translate');
-          }
+            mainWindow.webContents.send("show-translate");
+          },
         },
         {
-          label: 'Copy All',
-          accelerator: 'CmdOrCtrl+Shift+C',
+          label: "Copy All",
+          accelerator: "CmdOrCtrl+Shift+C",
           click: () => {
-            mainWindow.webContents.send('copy-all');
-          }
+            mainWindow.webContents.send("copy-all");
+          },
         },
         {
-          label: 'Share via Email',
+          label: "Share via Email",
           click: () => {
-            mainWindow.webContents.send('share-email');
-          }
-        }
-      ]
+            mainWindow.webContents.send("share-email");
+          },
+        },
+      ],
     },
     {
-      label: 'Help',
+      label: "Help",
       submenu: [
         {
-          label: 'Documentation',
+          label: "Documentation",
           click: () => {
-            require('electron').shell.openExternal('https://github.com/dimpletz/markdown-viewer');
-          }
+            require("electron").shell.openExternal(
+              "https://github.com/dimpletz/markdown-viewer",
+            );
+          },
         },
         {
-          label: 'About',
+          label: "About",
           click: () => {
             dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'About Markdown Viewer',
-              message: 'Markdown Viewer v1.0.0',
-              detail: 'Advanced markdown viewer with translation, diagram rendering, and export capabilities.'
+              type: "info",
+              title: "About Markdown Viewer",
+              message: "Markdown Viewer v1.0.0",
+              detail:
+                "Advanced markdown viewer with translation, diagram rendering, and export capabilities.",
             });
-          }
-        }
-      ]
-    }
+          },
+        },
+      ],
+    },
   ];
 
   const menu = Menu.buildFromTemplate(template);
@@ -180,55 +188,55 @@ function createMenu() {
 
 async function openFile() {
   const result = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
+    properties: ["openFile"],
     filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'mdown'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
+      { name: "Markdown", extensions: ["md", "markdown", "mdown"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
   });
 
   if (!result.canceled && result.filePaths.length > 0) {
     const filePath = result.filePaths[0];
-    mainWindow.webContents.send('open-file', filePath);
+    mainWindow.webContents.send("open-file", filePath);
   }
 }
 
 // IPC handlers
-ipcMain.handle('read-file', async (event, filePath) => {
+ipcMain.handle("read-file", async (event, filePath) => {
   try {
     const validation = validateFilePath(filePath);
     if (!validation.valid) {
       return { success: false, error: validation.error };
     }
-    const content = fs.readFileSync(validation.resolvedPath, 'utf-8');
+    const content = fs.readFileSync(validation.resolvedPath, "utf-8");
     return { success: true, content };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('save-file', async (event, filePath, content) => {
+ipcMain.handle("save-file", async (event, filePath, content) => {
   try {
     const validation = validateFilePath(filePath);
     if (!validation.valid) {
       return { success: false, error: validation.error };
     }
-    fs.writeFileSync(validation.resolvedPath, content, 'utf-8');
+    fs.writeFileSync(validation.resolvedPath, content, "utf-8");
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('show-save-dialog', async (event, options) => {
+ipcMain.handle("show-save-dialog", async (event, options) => {
   return await dialog.showSaveDialog(mainWindow, options);
 });
 
-ipcMain.handle('show-open-dialog', async (event, options) => {
+ipcMain.handle("show-open-dialog", async (event, options) => {
   return await dialog.showOpenDialog(mainWindow, options);
 });
 
-ipcMain.handle('save-export-file', async (event, filePath, data) => {
+ipcMain.handle("save-export-file", async (event, filePath, data) => {
   try {
     const validation = validateFilePath(filePath);
     if (!validation.valid) {
@@ -241,14 +249,28 @@ ipcMain.handle('save-export-file', async (event, filePath, data) => {
   }
 });
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']);
+const IMAGE_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".bmp",
+  ".ico",
+]);
 const IMAGE_MIME = {
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.bmp': 'image/bmp', '.ico': 'image/x-icon'
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".bmp": "image/bmp",
+  ".ico": "image/x-icon",
 };
 
-ipcMain.handle('read-image-as-dataurl', async (event, filePath) => {
+ipcMain.handle("read-image-as-dataurl", async (event, filePath) => {
   try {
     const validation = validateFilePath(filePath);
     if (!validation.valid) {
@@ -256,17 +278,20 @@ ipcMain.handle('read-image-as-dataurl', async (event, filePath) => {
     }
     const ext = path.extname(validation.resolvedPath).toLowerCase();
     if (!IMAGE_EXTENSIONS.has(ext)) {
-      return { success: false, error: 'Unsupported image type' };
+      return { success: false, error: "Unsupported image type" };
     }
     const data = fs.readFileSync(validation.resolvedPath);
-    const mime = IMAGE_MIME[ext] || 'application/octet-stream';
-    return { success: true, dataUrl: `data:${mime};base64,${data.toString('base64')}` };
+    const mime = IMAGE_MIME[ext] || "application/octet-stream";
+    return {
+      success: true,
+      dataUrl: `data:${mime};base64,${data.toString("base64")}`,
+    };
   } catch (error) {
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('open-new-window', async (event, filePath) => {
+ipcMain.handle("open-new-window", async (event, filePath) => {
   const validation = validateFilePath(filePath);
   if (!validation.valid) {
     throw new Error(validation.error);
@@ -278,13 +303,13 @@ ipcMain.handle('open-new-window', async (event, filePath) => {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      preload: path.join(__dirname, 'preload.js')
-    }
+      preload: path.join(__dirname, "preload.js"),
+    },
   });
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  win.webContents.once('did-finish-load', () => {
+  win.loadFile(path.join(__dirname, "renderer", "index.html"));
+  win.webContents.once("did-finish-load", () => {
     if (!win.isDestroyed()) {
-      win.webContents.send('open-file', validation.resolvedPath);
+      win.webContents.send("open-file", validation.resolvedPath);
     }
   });
 });
@@ -295,15 +320,15 @@ app.whenReady().then(() => {
   // Handle file argument from command line
   if (process.env.MARKDOWN_FILE) {
     setTimeout(() => {
-      mainWindow.webContents.send('open-file', process.env.MARKDOWN_FILE);
+      mainWindow.webContents.send("open-file", process.env.MARKDOWN_FILE);
     }, 1000);
   }
 
-  app.on('activate', function () {
+  app.on("activate", function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
 });

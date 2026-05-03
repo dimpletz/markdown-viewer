@@ -7,6 +7,7 @@ tags_text is maintained exclusively here — never written directly elsewhere.
 
 import logging
 import sqlite3
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -23,19 +24,25 @@ _MAX_CONTENT_BYTES = 10 * 1024 * 1024
 # FTS query sanitisation (S2 — prevents FTS5 injection)
 # ---------------------------------------------------------------------------
 
-_FTS_STRIP_CHARS = str.maketrans("", "", "\"'*():-")
+# FTS5 boolean operators must not become prefix tokens (e.g. "OR*" is a syntax error).
+_FTS_BOOLEAN_KEYWORDS = frozenset({"or", "and", "not"})
 
 
 def _sanitize_fts_query(q: str) -> str:
     """Strip FTS5 special characters and build a prefix-search expression.
 
-    Each whitespace-delimited token has * appended for prefix matching.
+    Replaces every non-word, non-space character with a space so that FTS5
+    operators (AND, OR, NOT), SQL injection fragments (1=1, --, ;), and other
+    special chars cannot appear in the generated query.
+    FTS5 boolean keywords are also dropped to avoid prefix-search syntax errors.
     Example: 'hello world' → 'hello* world*'
+    Example: 'a OR b AND NOT c' → 'a* b* c*'
+    Example: "'' OR 1=1 --" → '1*'
     """
-    cleaned = q.translate(_FTS_STRIP_CHARS).strip()
+    cleaned = re.sub(r"[^\w\s]", " ", q).strip()
     if not cleaned:
         return ""
-    tokens = [t + "*" for t in cleaned.split() if t]
+    tokens = [t + "*" for t in cleaned.split() if t and t.lower() not in _FTS_BOOLEAN_KEYWORDS]
     return " ".join(tokens)
 
 

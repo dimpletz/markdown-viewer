@@ -1,232 +1,260 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self'; 
-                   script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; 
-                   style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; 
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; 
+                 script-src 'self' 'unsafe-eval'; 
+                 style-src 'self' 'unsafe-inline'; 
                    img-src 'self' data: file: https: http://localhost:* http://127.0.0.1:*; 
-                   font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-                   connect-src 'self' http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;">
+                 font-src 'self';
+                 connect-src 'self' http://localhost:* http://127.0.0.1:*;"
+    />
     <title>Markdown Viewer</title>
-    
+
     <!-- Styles -->
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/favourites.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/monokai.min.css">
-    
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/favourites.css" />
+    <link rel="stylesheet" href="vendor/katex/katex.min.css" />
+    <link rel="stylesheet" href="vendor/highlightjs/monokai.min.css" />
+
     <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.0/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/contrib/auto-render.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.8.4/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js"></script>
-</head>
-<body>
+    <script src="vendor/marked/marked.min.js"></script>
+    <script src="vendor/mermaid/mermaid.min.js"></script>
+    <script src="vendor/katex/katex.min.js"></script>
+    <script src="vendor/katex/auto-render.min.js"></script>
+    <script src="vendor/highlightjs/highlight.min.js"></script>
+    <script src="vendor/axios/axios.min.js"></script>
+    <script src="vendor/purify.min.js"></script>
+  </head>
+  <body>
     <div id="app">
-        <!-- Toolbar -->
-        <div id="toolbar">
-            <div class="toolbar-left">
-                <button id="btnHome" class="btn" title="Back to Home" style="display:none;">
-                    <span class="icon">🏠</span> Home
-                </button>
-                <button id="btnOpen" class="btn btn-primary" title="Open File (Ctrl+O)">
-                    <span class="icon">📂</span> Open
-                </button>
-                <button id="btnRefresh" class="btn" title="Refresh">
-                    <span class="icon">🔄</span> Refresh
-                </button>
-                <div class="separator"></div>
-                <button id="btnExportPdf" class="btn" title="Export as PDF">
-                    <span class="icon">📄</span> PDF
-                </button>
-                <button id="btnExportWord" class="btn" title="Export as Word">
-                    <span class="icon">📝</span> Word
-                </button>
-                <div class="separator"></div>
-                <button id="btnCopyAll" class="btn" title="Copy All (Ctrl+Shift+C)">
-                    <span class="icon">📋</span> Copy All
-                </button>
-                <button id="btnShare" class="btn" title="Share via Email">
-                    <span class="icon">📧</span> Share
-                </button>
-                <div class="separator"></div>
-                <button id="btnFavourite" class="btn btn-fav" aria-pressed="false"
-                        title="Add to Favourites" style="display:none;">
-                    ☆ Favourite
-                </button>
-            </div>
-            <div class="toolbar-right">
-                <button id="btnTranslate" class="btn" title="Translate">
-                    <span class="icon">🌐</span> Translate
-                </button>
-                <select id="selectLanguage" class="select" style="display:none;">
-                    <option value="en">English</option>
-                    <option value="es">Spanish</option>
-                    <option value="fr">French</option>
-                    <option value="de">German</option>
-                    <option value="zh-CN">Chinese</option>
-                    <option value="ja">Japanese</option>
-                </select>
-            </div>
+      <!-- Toolbar -->
+      <div id="toolbar">
+        <div class="toolbar-left">
+          <button
+            id="btnHome"
+            class="btn"
+            title="Back to Home"
+            style="display: none"
+          >
+            <span class="icon">🏠</span> Home
+          </button>
+          <button
+            id="btnOpen"
+            class="btn btn-primary"
+            title="Open File (Ctrl+O)"
+          >
+            <span class="icon">📂</span> Open
+          </button>
+          <button id="btnRefresh" class="btn" title="Refresh">
+            <span class="icon">🔄</span> Refresh
+          </button>
+          <div class="separator"></div>
+          <button id="btnExportPdf" class="btn" title="Export as PDF">
+            <span class="icon">📄</span> PDF
+          </button>
+          <button id="btnExportWord" class="btn" title="Export as Word">
+            <span class="icon">📝</span> Word
+          </button>
+          <div class="separator"></div>
+          <button id="btnCopyAll" class="btn" title="Copy All (Ctrl+Shift+C)">
+            <span class="icon">📋</span> Copy All
+          </button>
+          <button id="btnShare" class="btn" title="Share via Email">
+            <span class="icon">📧</span> Share
+          </button>
+          <div class="separator"></div>
+          <button
+            id="btnFavourite"
+            class="btn btn-fav"
+            aria-pressed="false"
+            title="Add to Favourites"
+            style="display: none"
+          >
+            ☆ Favourite
+          </button>
+        </div>
+        <div class="toolbar-right">
+          <button id="btnTranslate" class="btn" title="Translate">
+            <span class="icon">🌐</span> Translate
+          </button>
+          <select id="selectLanguage" class="select" style="display: none">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="zh-CN">Chinese</option>
+            <option value="ja">Japanese</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div id="main-content">
+        <!-- Favourites Sidebar (shown when a file is open and favourites exist) -->
+        <div
+          id="fav-sidebar"
+          class="fav-sidebar"
+          style="display: none"
+          role="complementary"
+          aria-label="Favourites"
+        >
+          <div class="fav-sidebar-header">
+            <span>Favourites</span>
+            <button id="btnCloseSidebar" aria-label="Close favourites sidebar">
+              ×
+            </button>
+          </div>
+          <input
+            id="favSidebarSearch"
+            class="fav-search-input"
+            placeholder="Search favourites…"
+            aria-label="Search favourites"
+            autocomplete="off"
+          />
+          <div
+            id="favSidebarAutocomplete"
+            class="fav-autocomplete"
+            style="display: none"
+            role="listbox"
+          ></div>
+          <ul id="favSidebarList" class="fav-list" role="list"></ul>
         </div>
 
-        <!-- Main Content -->
-        <div id="main-content">
-            <!-- Favourites Sidebar (shown when a file is open and favourites exist) -->
-            <div id="fav-sidebar" class="fav-sidebar" style="display:none;"
-                 role="complementary" aria-label="Favourites">
-                <div class="fav-sidebar-header">
-                    <span>Favourites</span>
-                    <button id="btnCloseSidebar" aria-label="Close favourites sidebar">×</button>
-                </div>
-                <input id="favSidebarSearch" class="fav-search-input"
-                       placeholder="Search favourites…" aria-label="Search favourites"
-                       autocomplete="off">
-                <div id="favSidebarAutocomplete" class="fav-autocomplete"
-                     style="display:none;" role="listbox"></div>
-                <ul id="favSidebarList" class="fav-list" role="list"></ul>
-            </div>
+        <!-- Content Area -->
+        <div id="content-area">
+          <!-- Welcome screen (always shown on home page) -->
+          <div id="welcome" class="welcome-screen" style="display: none">
+            <div class="welcome-content">
+              <h1>📝 Markdown Viewer</h1>
+              <p>
+                Advanced markdown viewer with translation and export
+                capabilities
+              </p>
+              <div class="welcome-actions">
+                <button id="btnOpenWelcome" class="btn btn-large btn-primary">
+                  <span class="icon">📂</span> Open Markdown File
+                </button>
+              </div>
 
-            <!-- Content Area -->
-            <div id="content-area">
-                <!-- Welcome screen (always shown on home page) -->
-                <div id="welcome" class="welcome-screen" style="display:none;">
-                    <div class="welcome-content">
-                        <h1>📝 Markdown Viewer</h1>
-                        <p>Advanced markdown viewer with translation and export capabilities</p>
-                        <div class="welcome-actions">
-                            <button id="btnOpenWelcome" class="btn btn-large btn-primary">
-                                <span class="icon">📂</span> Open Markdown File
-                            </button>
-                        </div>
-                        
-                        <!-- Favourites table (shown when favourites exist) -->
-                        <div id="fav-dashboard" style="display:none;">
-                            <div class="fav-dashboard-header">
-                                <h2>Favourites</h2>
-                                <div style="position:relative;">
-                                    <input id="favTableSearch" class="fav-search-input"
-                                           placeholder="Search favourites…"
-                                           aria-label="Search favourites" autocomplete="off">
-                                    <div id="favTableAutocomplete" class="fav-autocomplete"
-                                         style="display:none;" role="listbox"></div>
-                                </div>
-                            </div>
-                            <div id="favTableContainer"></div>
-                        </div>
-                        
-                        <!-- Features (shown when no favourites) -->
-                        <div id="welcome-features" class="features">
-                            <div class="feature">
-                                <h3>✨ Features</h3>
-                                <ul>
-                                    <li>📊 Mermaid & PlantUML diagrams</li>
-                                    <li>🔢 Math equations (KaTeX)</li>
-                                    <li>💻 Syntax highlighting</li>
-                                    <li>📄 Export to PDF & Word</li>
-                                    <li>🌐 Translate content</li>
-                                    <li>📋 Copy all content</li>
-                                    <li>📧 Share via email</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+              <!-- Favourites table (shown when favourites exist) -->
+              <div id="fav-dashboard" style="display: none">
+                <div class="fav-dashboard-header">
+                  <h2>Favourites</h2>
+                  <div style="position: relative">
+                    <input
+                      id="favTableSearch"
+                      class="fav-search-input"
+                      placeholder="Search favourites…"
+                      aria-label="Search favourites"
+                      autocomplete="off"
+                    />
+                    <div
+                      id="favTableAutocomplete"
+                      class="fav-autocomplete"
+                      style="display: none"
+                      role="listbox"
+                    ></div>
+                  </div>
                 </div>
-                
-                <div id="preview" class="markdown-preview" style="display:none;">
-                    <!-- Rendered markdown content will appear here -->
-                </div>
-            </div>
-        </div>
+                <div id="favTableContainer"></div>
+              </div>
 
-        <!-- Status Bar -->
-        <div id="status-bar">
-            <span id="status-text">Ready</span>
-            <span id="file-path"></span>
+              <!-- Features (shown when no favourites) -->
+              <div id="welcome-features" class="features">
+                <div class="feature">
+                  <h3>✨ Features</h3>
+                  <ul>
+                    <li>📊 Mermaid & PlantUML diagrams</li>
+                    <li>🔢 Math equations (KaTeX)</li>
+                    <li>💻 Syntax highlighting</li>
+                    <li>📄 Export to PDF & Word</li>
+                    <li>🌐 Translate content</li>
+                    <li>📋 Copy all content</li>
+                    <li>📧 Share via email</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="preview" class="markdown-preview" style="display: none">
+            <!-- Rendered markdown content will appear here -->
+          </div>
         </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div id="status-bar">
+        <span id="status-text">Ready</span>
+        <span id="file-path"></span>
+      </div>
     </div>
 
     <!-- Favourites context menu -->
-    <div id="fav-context-menu" class="fav-context-menu" style="display:none;" role="menu"></div>
+    <div
+      id="fav-context-menu"
+      class="fav-context-menu"
+      style="display: none"
+      role="menu"
+    ></div>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay" style="display:none;">
-        <div class="spinner"></div>
-        <p>Processing...</p>
+    <div id="loading-overlay" style="display: none">
+      <div class="spinner"></div>
+      <p>Processing...</p>
     </div>
 
     <!-- Translate Modal -->
-    <div id="translate-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Translate Content</h2>
-                <button class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="sourceLanguage">Source Language:</label>
-                    <select id="sourceLanguage" class="select">
-                        <option value="auto">Auto Detect</option>
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="zh-CN">Chinese</option>
-                        <option value="ja">Japanese</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="targetLanguage">Target Language:</label>
-                    <select id="targetLanguage" class="select">
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="zh-CN">Chinese</option>
-                        <option value="ja">Japanese</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="btnCancelTranslate" class="btn">Cancel</button>
-                <button id="btnConfirmTranslate" class="btn btn-primary">Translate</button>
-            </div>
+    <div id="translate-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Translate Content</h2>
+          <button class="close-btn">&times;</button>
         </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="sourceLanguage">Source Language:</label>
+            <select id="sourceLanguage" class="select">
+              <option value="auto">Auto Detect</option>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="zh-CN">Chinese</option>
+              <option value="ja">Japanese</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="targetLanguage">Target Language:</label>
+            <select id="targetLanguage" class="select">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="zh-CN">Chinese</option>
+              <option value="ja">Japanese</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btnCancelTranslate" class="btn">Cancel</button>
+          <button id="btnConfirmTranslate" class="btn btn-primary">
+            Translate
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Legacy browser check: IE 11 and earlier cannot parse ES6 class/arrow syntax.
-         Detect by probing arrow-function support via new Function() and show a
-         friendly message instead of a broken page. -->
-    <script>
-    (function () {
-      try { new Function('() => {}')(); } catch (e) {
-        document.addEventListener('DOMContentLoaded', function () {
-          document.body.style.cssText = 'margin:0;font-family:sans-serif;background:#fff';
-          document.body.innerHTML =
-            '<div style="max-width:600px;margin:80px auto;padding:40px;text-align:center;' +
-            'border:1px solid #e0e0e0;border-radius:8px;">' +
-            '<h2 style="color:#cc0000">&#x26A0; Browser Not Supported</h2>' +
-            '<p>This application requires a modern browser.</p>' +
-            '<p>Please open this page in one of the following browsers:</p>' +
-            '<p><strong>Chrome &bull; Firefox &bull; Edge &bull; Brave &bull; Safari &bull; Opera</strong></p>' +
-            '</div>';
-        });
-        throw new Error('Legacy browser detected');
-      }
-    })();
-    </script>
-
     <!-- Scripts -->
+    <script src="scripts/legacy-check.js"></script>
     <script src="scripts/browser-shim.js"></script>
     <script src="scripts/api.js"></script>
     <script src="scripts/renderer.js"></script>
     <script src="scripts/favourites.js"></script>
     <script src="scripts/app.js"></script>
-</body>
+  </body>
 </html>
