@@ -271,6 +271,8 @@ def cleanup_resources(error=None):  # pylint: disable=unused-argument
 @api_bp.route("/health", methods=["GET"])
 def health_check() -> Tuple[Dict[str, Any], int]:
     """Health check endpoint with comprehensive checks."""
+    from markdown_viewer import __version__  # pylint: disable=import-outside-toplevel
+
     checks = {
         "api": True,
         "disk_space": check_disk_space(),
@@ -285,6 +287,7 @@ def health_check() -> Tuple[Dict[str, Any], int]:
             {
                 "status": "ok" if all_healthy else "degraded",
                 "message": "Markdown Viewer API is running",
+                "version": __version__,
                 "checks": checks,
                 "capabilities": {"pdf_export": _check_playwright_available()},
             }

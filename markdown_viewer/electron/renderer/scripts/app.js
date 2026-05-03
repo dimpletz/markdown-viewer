@@ -651,6 +651,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize API client (fetch CSRF token)
   await window.MarkdownViewerAPI.init();
 
+  // Fetch and display app version
+  try {
+    const response = await axios.get(`${window.MarkdownViewerAPI.getBackendUrl()}/api/health`);
+    if (response.data && response.data.version) {
+      const versionEl = document.getElementById("app-version");
+      if (versionEl) {
+        versionEl.textContent = `v${response.data.version}`;
+        versionEl.title = `Markdown Viewer ${response.data.version}`;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to fetch app version:", error);
+  }
+
   // Create and initialize app
   window.app = new MarkdownViewerApp();
 

@@ -299,7 +299,7 @@ class WordExporter:
 
         return None
 
-def _cleanup(self):
+    def _cleanup(self):
         """Clean up browser and temp files."""
         if self.page:
             try:
