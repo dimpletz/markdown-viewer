@@ -116,14 +116,21 @@ class MarkdownViewerApp {
         "warning",
       );
     }
+    
+    // Check for test parameter to force banner display
+    const urlParams = new URLSearchParams(window.location.search);
+    const testBanner = urlParams.has('test-banner');
+    
     const pdfAvailable = health.capabilities?.pdf_export !== false;
-    if (!pdfAvailable) {
-      this.btnExportPdf.style.display = "none";
-      this.btnExportWord.style.display = "none";
+    if (!pdfAvailable || testBanner) {
+      if (!pdfAvailable) {
+        this.btnExportPdf.style.display = "none";
+        this.btnExportWord.style.display = "none";
+      }
       
       // Show info banner about export features (unless previously dismissed)
       const bannerDismissed = localStorage.getItem("playwright-banner-dismissed");
-      if (!bannerDismissed) {
+      if (!bannerDismissed || testBanner) {
         const banner = document.getElementById("playwright-info-banner");
         if (banner) {
           banner.style.display = "block";
