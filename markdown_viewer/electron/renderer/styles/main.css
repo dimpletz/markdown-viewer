@@ -374,6 +374,52 @@ body {
   margin: 20px 0;
 }
 
+/* Table of Contents */
+.markdown-preview .toc {
+  background: #f6f8fa;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin: 24px 0;
+}
+
+.markdown-preview .toc > ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.markdown-preview .toc ul {
+  list-style: none;
+}
+
+.markdown-preview .toc ul ul {
+  padding-left: 20px;
+  margin-top: 8px;
+}
+
+.markdown-preview .toc li {
+  margin: 6px 0;
+}
+
+.markdown-preview .toc a {
+  color: #0366d6;
+  text-decoration: none;
+  font-weight: 600;
+  display: block;
+  padding: 4px 0;
+}
+
+.markdown-preview .toc a:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.markdown-preview .toc > ul > li > a {
+  font-size: 1.05em;
+  font-weight: 700;
+}
+
 /* Status Bar */
 #status-bar {
   display: flex;

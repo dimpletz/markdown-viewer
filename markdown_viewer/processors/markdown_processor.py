@@ -81,6 +81,7 @@ class MarkdownProcessor:  # pylint: disable=too-few-public-methods
             "pymdownx.arithmatex": {"generic": True},
             "markdown.extensions.toc": {
                 "permalink": False,
+                "marker": "[TOC]",
                 "toc_depth": "1-6",
                 "title": "Table of Contents",
             },
