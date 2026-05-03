@@ -8,6 +8,7 @@
 
 **Published**: 2026-05-03 18:33 UTC  
 **PyPI Package**: https://pypi.org/project/markdown-viewer-app/  
+**GitHub Release**: https://github.com/dimpletz/markdown-viewer/releases/tag/v1.3.4  
 **Version**: 1.3.4
 
 ### Build Artifacts
@@ -15,9 +16,11 @@
 - ✅ `markdown_viewer_app-1.3.4.tar.gz` (2.3 MB)
 
 ### Upload Status
-- ✅ Source distribution uploaded (100%)
-- ✅ Wheel uploaded (100%)
+- ✅ Source distribution uploaded to PyPI (100%)
+- ✅ Wheel uploaded to PyPI (100%)
 - ✅ Package available on PyPI (verified with pip)
+- ✅ Code pushed to GitHub (commit 07a0979)
+- ✅ Tag v1.3.4 created and pushed to GitHub
 
 ### Installation
 ```bash

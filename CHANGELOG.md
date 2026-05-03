@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.4] - 2026-05-03
+## [1.3.5] - 2026-05-03
+
+### Fixed
+- **Server Reuse Bug**: Fixed critical issue where upgrading from v1.3.3 or earlier would reuse the old server process, causing vendor files to return 404
+  - Added `_server_is_current_version()` health check to detect outdated servers missing the vendor route
+  - CLI now automatically kills and restarts outdated server processes before launching
+  - Server version check uses `/vendor/purify.min.js` HEAD request (200 = current, 404 = outdated)
+  - Prevents "vendor files not found" errors after pip upgrade without manual `--stop`
+
+## [1.3.4] - 2026-05-03 [YANKED]
+
+**Note**: Version 1.3.4 was yanked due to server reuse bug. Use 1.3.5 instead.
 
 ### Fixed
 - **Vendor JavaScript Loading**: Fixed 404 errors for vendor libraries (axios, marked, mermaid, katex, purify)

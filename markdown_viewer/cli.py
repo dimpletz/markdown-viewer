@@ -673,6 +673,21 @@ def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] 
         except Exception:  # pylint: disable=broad-exception-caught
             return False
 
+    def _server_is_current_version(p: int) -> bool:
+        """Return True if the running server has the vendor route (v1.3.4+).
+
+        This prevents reusing stale servers from v1.3.3 or earlier after upgrade.
+        """
+        try:
+            conn = http.client.HTTPConnection("localhost", p, timeout=1)
+            conn.request("HEAD", "/vendor/purify.min.js")
+            response = conn.getresponse()
+            conn.close()
+            # If vendor route exists, we get 200. If not, 404.
+            return response.status == 200
+        except Exception:  # pylint: disable=broad-exception-caught
+            return False
+
     # Fail fast with a helpful message if Flask is not in the current Python environment.
     # This happens when a user has two Python installs (e.g. system Python + Poetry venv)
     # and runs the bare `mdview` entry point installed in the system Python.
@@ -689,6 +704,24 @@ def _open_in_flask_app(filepath: Path, port: int = 5000, browser: Optional[str] 
 
     # --- Check if a server is already running on this port ---
     server_already_running = _server_up(port)
+
+    # If server is running but outdated (pre-v1.3.4 without vendor route), kill it
+    if server_already_running and not _server_is_current_version(port):
+        print(f"⚠️  Outdated server detected on port {port}, restarting...")
+        # Try to stop the old server via PID file
+        from .server import pid_file_path  # pylint: disable=import-outside-toplevel
+
+        pid_file = pid_file_path(port)
+        if pid_file.exists():
+            try:
+                pid = int(pid_file.read_text(encoding="utf-8"))
+                import signal  # pylint: disable=import-outside-toplevel
+
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(1)  # Wait for graceful shutdown
+            except (ValueError, ProcessLookupError, OSError):
+                pass
+        server_already_running = False  # Force new server start
 
     if not server_already_running:
         # Spawn a fully-detached background process so the terminal returns
