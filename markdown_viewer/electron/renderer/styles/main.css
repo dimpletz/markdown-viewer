@@ -383,6 +383,14 @@ body {
   margin: 24px 0;
 }
 
+.markdown-preview .toc .toctitle {
+  display: block;
+  font-size: 1.1em;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #24292e;
+}
+
 .markdown-preview .toc > ul {
   margin: 0;
   padding-left: 0;
