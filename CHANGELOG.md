@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-05-03
+
+### Added
+- **Version Display**: App version now shown in UI toolbar next to Translate button
+  - Dynamically fetched from `/api/health` endpoint
+  - Displays as subtle badge (e.g., "v1.3.6") with tooltip
+  - Auto-updates when user upgrades package
+- **Playwright Info Banner**: Helpful banner appears when Playwright browsers not installed
+  - Informs users about PDF & Word export capabilities
+  - Shows exact command to enable features: `playwright install chromium`
+  - Dismissible with × button (remembers preference in localStorage)
+  - Smooth slide-down animation for polished UX
+  - Test mode available via `?test-banner` URL parameter
+- **Better Error Messages**: Improved error handling for Word/PDF export
+  - Detects missing Playwright browsers and provides clear installation instructions
+  - Context-aware error messages for timeout issues
+  - Guides users to exact fix command instead of cryptic errors
+
+### Fixed
+- **Word Export Performance**: Improved reliability and speed
+  - Changed Playwright wait condition from `networkidle` to `domcontentloaded`
+  - Increased timeout from 30s to 60s as safety net
+  - Reduced rendering wait from 5s to 2.5s
+  - Fixes "Page.goto: Timeout 30000ms exceeded" errors caused by slow external resources
+  - More reliable for local file:// protocol
+- **Export Button Visibility**: Both PDF and Word export buttons now hidden when Playwright not installed
+  - Previously only PDF button was conditionally shown
+  - Consistent UX: users only see features they can use
+  - Prevents confusion from clicking unavailable features
+
+### Changed
+- **Version Badge Styling**: Made version display more prominent (increased opacity, added background)
+- **Health Endpoint**: Now includes version number in response for frontend display
+
 ## [1.3.5] - 2026-05-03
 
 ### Fixed
