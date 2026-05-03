@@ -63,6 +63,16 @@ class WordExporter:
                     except Exception:
                         pass
                     self.playwright = None
+
+                # Check if it's a missing browser error
+                error_msg = str(e).lower()
+                if "executable doesn't exist" in error_msg or "browser" in error_msg:
+                    raise RuntimeError(
+                        "Playwright browser (Chromium) not found. "
+                        "Word export requires Playwright browsers. "
+                        "Install them by running: playwright install chromium"
+                    ) from e
+
                 raise RuntimeError(f"Failed to initialize browser for Word export: {e}") from e
 
     def _load_html(self, html_content: str):
@@ -261,6 +271,16 @@ class WordExporter:
             logger.info("HTML loaded and rendered in browser")
         except Exception as e:
             logger.error("Failed to load HTML in browser: %s", e, exc_info=True)
+
+            # Check if it's a browser/timeout issue
+            error_msg = str(e).lower()
+            if "timeout" in error_msg:
+                raise RuntimeError(
+                    f"Browser timeout while rendering HTML: {e}. "
+                    "This may be caused by slow external resources or missing Playwright browsers. "
+                    "If Word export consistently fails, try: playwright install chromium"
+                ) from e
+
             raise RuntimeError(f"Failed to render HTML in browser: {e}") from e
 
     def _screenshot_element(self, selector: str, content_hash: str) -> Optional[bytes]:
