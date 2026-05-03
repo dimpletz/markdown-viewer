@@ -240,12 +240,17 @@ class WordExporter:
             context = self.browser.new_context(device_scale_factor=2)
             self.page = context.new_page()
 
-            # Load HTML and wait for network to be idle (scripts loaded)
-            self.page.goto(f"file://{self.temp_html_path}", wait_until="networkidle")
+            # Load HTML - use domcontentloaded instead of networkidle for reliability
+            # networkidle can timeout with external resources or browser extensions
+            self.page.goto(
+                f"file://{self.temp_html_path}",
+                wait_until="domcontentloaded",
+                timeout=60000,  # 60 second timeout as safety net
+            )
 
             # Wait for rendering (KaTeX, Mermaid async rendering)
-            # Mermaid uses async await, so needs more time
-            self.page.wait_for_timeout(5000)
+            # Reduced from 5s to 2.5s - math/diagrams render quickly
+            self.page.wait_for_timeout(RENDER_WAIT_MS)
 
             # Wait for KaTeX elements to appear (if any math exists)
             try:
@@ -294,7 +299,7 @@ class WordExporter:
 
         return None
 
-    def _cleanup(self):
+def _cleanup(self):
         """Clean up browser and temp files."""
         if self.page:
             try:
