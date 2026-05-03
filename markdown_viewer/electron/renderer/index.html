@@ -95,6 +95,18 @@
         </div>
       </div>
 
+      <!-- Export Features Info Banner (hidden when Playwright available) -->
+      <div id="playwright-info-banner" class="info-banner" style="display: none;">
+        <div class="info-banner-content">
+          <span class="info-icon">ℹ️</span>
+          <span class="info-text">
+            Want PDF & Word export? Install Playwright browsers: 
+            <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; font-family: monospace;">playwright install chromium</code>
+          </span>
+          <button id="btnDismissBanner" class="info-banner-close" title="Dismiss" aria-label="Dismiss info banner">×</button>
+        </div>
+      </div>
+
       <!-- Main Content -->
       <div id="main-content">
         <!-- Favourites Sidebar (shown when a file is open and favourites exist) -->

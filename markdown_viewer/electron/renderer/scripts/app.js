@@ -120,6 +120,15 @@ class MarkdownViewerApp {
     if (!pdfAvailable) {
       this.btnExportPdf.style.display = "none";
       this.btnExportWord.style.display = "none";
+      
+      // Show info banner about export features (unless previously dismissed)
+      const bannerDismissed = localStorage.getItem("playwright-banner-dismissed");
+      if (!bannerDismissed) {
+        const banner = document.getElementById("playwright-info-banner");
+        if (banner) {
+          banner.style.display = "block";
+        }
+      }
     }
     // Notify FavouritesManager that the backend is ready (R1)
     document.dispatchEvent(new CustomEvent("backend:ready"));
@@ -664,6 +673,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } catch (error) {
     console.warn("Failed to fetch app version:", error);
+  }
+
+  // Handle Playwright info banner dismiss
+  const dismissBtn = document.getElementById("btnDismissBanner");
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", () => {
+      const banner = document.getElementById("playwright-info-banner");
+      if (banner) {
+        banner.style.display = "none";
+        localStorage.setItem("playwright-banner-dismissed", "true");
+      }
+    });
   }
 
   // Create and initialize app
