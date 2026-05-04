@@ -1,7 +1,7 @@
-# Publishing Checklist for v1.3.6
+# Publishing Checklist for v1.3.7
 
 **Date**: 2026-05-04  
-**Version**: 1.3.6  
+**Version**: 1.3.7  
 **Author**: Ofelia B Webb  
 **Status**: 🚀 READY TO PUBLISH
 
@@ -23,11 +23,11 @@
 - [x] **Dependencies**: All security patches applied
 
 ### Version Management
-- [x] **Version Bumped**: 1.3.5 → 1.3.6
-  - [x] `pyproject.toml`: 1.3.6 ✅
-  - [x] `package.json`: 1.3.6 ✅
-  - [x] `markdown_viewer/__init__.py`: 1.3.6 ✅
-- [x] **CHANGELOG Updated**: v1.3.6 entry complete with all features
+- [x] **Version Bumped**: 1.3.5 → 1.3.7
+  - [x] `pyproject.toml`: 1.3.7 ✅
+  - [x] `package.json`: 1.3.7 ✅
+  - [x] `markdown_viewer/__init__.py`: 1.3.7 ✅
+- [x] **CHANGELOG Updated**: v1.3.7 entry complete with all features
 - [x] **dist/ Cleaned**: Empty (ready for fresh build)
 - [x] **Author Verified**: Ofelia B Webb in all files ✅
 
@@ -37,7 +37,7 @@
 - [x] **Docs**: CLI usage, export features, installation guides ✅
 - [x] **SECURITY.md**: Security practices documented ✅
 
-### Key Features in v1.3.6
+### Key Features in v1.3.7
 - [x] **Version Display**: UI shows app version next to Translate button
 - [x] **Playwright Info Banner**: Helpful installation instructions with dismissible banner
 - [x] **Better Error Messages**: Clear guidance for missing Playwright browsers
@@ -66,11 +66,11 @@ Remove-Item -Recurse -Force dist\* -ErrorAction SilentlyContinue
 poetry build
 
 # Expected output:
-# Building markdown-viewer-app (1.3.6)
+# Building markdown-viewer-app (1.3.7)
 #  - Building sdist
-#  - Built markdown_viewer_app-1.3.6.tar.gz
+#  - Built markdown_viewer_app-1.3.7.tar.gz
 #  - Building wheel
-#  - Built markdown_viewer_app-1.3.6-py3-none-any.whl
+#  - Built markdown_viewer_app-1.3.7-py3-none-any.whl
 ```
 
 ### 3. Verify Build
@@ -79,30 +79,30 @@ poetry build
 ls dist/
 
 # Expected files:
-# markdown_viewer_app-1.3.6-py3-none-any.whl (~2.3 MB)
-# markdown_viewer_app-1.3.6.tar.gz (~2.3 MB)
+# markdown_viewer_app-1.3.7-py3-none-any.whl (~2.3 MB)
+# markdown_viewer_app-1.3.7.tar.gz (~2.3 MB)
 
 # Verify wheel contents include vendor files
-python -m zipfile -l dist/markdown_viewer_app-1.3.6-py3-none-any.whl | Select-String "mermaid.min.js"
+python -m zipfile -l dist/markdown_viewer_app-1.3.7-py3-none-any.whl | Select-String "mermaid.min.js"
 # Should show: markdown_viewer/electron/renderer/vendor/mermaid/mermaid.min.js
 ```
 
 ### 4. Test Installation (Local)
 ```bash
 # Create fresh test environment
-python -m venv test-env-1.3.6
-test-env-1.3.6\Scripts\activate
+python -m venv test-env-1.3.7
+test-env-1.3.7\Scripts\activate
 
 # Install from wheel
-pip install dist/markdown_viewer_app-1.3.6-py3-none-any.whl
+pip install dist/markdown_viewer_app-1.3.7-py3-none-any.whl
 
 # Test CLI
-mdview --version  # Should show: Markdown Viewer v1.3.6
+mdview --version  # Should show: Markdown Viewer v1.3.7
 mdview --help
 
 # Test with example file
 mdview examples/COMPREHENSIVE_DEMO.md
-# Verify: Version badge shows "v1.3.6" in UI
+# Verify: Version badge shows "v1.3.7" in UI
 # Verify: All vendor scripts load (check browser console)
 # Verify: Export buttons visible if Playwright installed
 
@@ -111,7 +111,7 @@ mdview examples/COMPREHENSIVE_DEMO.md
 
 # Cleanup
 deactivate
-Remove-Item -Recurse -Force test-env-1.3.6
+Remove-Item -Recurse -Force test-env-1.3.7
 ```
 
 ### 5. Publish to PyPI
@@ -127,29 +127,29 @@ Remove-Item -Recurse -Force test-env-1.3.6
 poetry publish
 
 # Expected output:
-# Publishing markdown-viewer-app (1.3.6) to PyPI
-#  - Uploading markdown_viewer_app-1.3.6-py3-none-any.whl 100%
-#  - Uploading markdown_viewer_app-1.3.6.tar.gz 100%
+# Publishing markdown-viewer-app (1.3.7) to PyPI
+#  - Uploading markdown_viewer_app-1.3.7-py3-none-any.whl 100%
+#  - Uploading markdown_viewer_app-1.3.7.tar.gz 100%
 ```
 
 ### 6. Create Git Tag and GitHub Release
 ```bash
 # Commit checklist update (if modified)
 git add PUBLISH_CHECKLIST.md
-git commit -m "docs: Update publish checklist for v1.3.6"
+git commit -m "docs: Update publish checklist for v1.3.7"
 git push origin main
 
 # Tag the release
-git tag -a v1.3.6 -m "Release v1.3.6: Version display, Playwright UX improvements, TOC fixes"
-git push origin v1.3.6
+git tag -a v1.3.7 -m "Release v1.3.7: Version display, Playwright UX improvements, TOC fixes"
+git push origin v1.3.7
 
 # Create release on GitHub:
 # 1. Go to https://github.com/dimpletz/markdown-viewer/releases/new
-# 2. Tag: v1.3.6
-# 3. Title: "v1.3.6 - Version Display & UX Improvements"
-# 4. Description: Copy from CHANGELOG.md v1.3.6 section
-# 5. Attach: dist/markdown_viewer_app-1.3.6-py3-none-any.whl
-# 6. Attach: dist/markdown_viewer_app-1.3.6.tar.gz
+# 2. Tag: v1.3.7
+# 3. Title: "v1.3.7 - Version Display & UX Improvements"
+# 4. Description: Copy from CHANGELOG.md v1.3.7 section
+# 5. Attach: dist/markdown_viewer_app-1.3.7-py3-none-any.whl
+# 6. Attach: dist/markdown_viewer_app-1.3.7.tar.gz
 # 7. Publish release
 ```
 
@@ -158,27 +158,27 @@ git push origin v1.3.6
 # Wait 5-10 minutes for PyPI to propagate
 
 # Install from PyPI in clean environment
-python -m venv test-pypi-1.3.6
-test-pypi-1.3.6\Scripts\activate
+python -m venv test-pypi-1.3.7
+test-pypi-1.3.7\Scripts\activate
 
 pip install --upgrade markdown-viewer-app
 
 # Verify version
-mdview --version  # Should show: Markdown Viewer v1.3.6
+mdview --version  # Should show: Markdown Viewer v1.3.7
 
 # Test functionality
 mdview examples/TABLE_BEFORE_TOC.md
-# ✅ Version badge shows v1.3.6
+# ✅ Version badge shows v1.3.7
 # ✅ TOC renders with bold title
 # ✅ Table before TOC displays correctly
 
 # Cleanup
 deactivate
-Remove-Item -Recurse -Force test-pypi-1.3.6
+Remove-Item -Recurse -Force test-pypi-1.3.7
 
 # Verify PyPI page
 # https://pypi.org/project/markdown-viewer-app/
-# Should show version 1.3.6 with updated description
+# Should show version 1.3.7 with updated description
 ```
 
 ## 🔍 Final Checklist
@@ -187,15 +187,15 @@ Before running `poetry publish`:
 
 - [x] All tests pass (`pytest tests/ -v`) - 468/468 ✅
 - [x] Audit report complete - 84% coverage ✅
-- [x] Version numbers aligned (pyproject.toml + package.json + __init__.py) - 1.3.6 ✅
-- [x] CHANGELOG.md updated - v1.3.6 section complete ✅
+- [x] Version numbers aligned (pyproject.toml + package.json + __init__.py) - 1.3.7 ✅
+- [x] CHANGELOG.md updated - v1.3.7 section complete ✅
 - [x] Author name verified - Ofelia B Webb ✅
 - [ ] dist/ cleaned before build - **DO THIS FIRST**
 - [ ] Poetry build successful
 - [ ] Wheel integrity verified (vendor files included)
 - [ ] Local installation test passed
 - [ ] Git committed and pushed
-- [ ] Git tag created (v1.3.6)
+- [ ] Git tag created (v1.3.7)
 
 After publishing:
 
@@ -208,7 +208,7 @@ After publishing:
 ## 📝 Release Notes Template
 
 ```markdown
-# Markdown Viewer v1.3.6
+# Markdown Viewer v1.3.7
 
 **Release Date**: May 4, 2026  
 **Author**: Ofelia B Webb
@@ -218,7 +218,7 @@ After publishing:
 ### Version Display
 - App version now shown in UI toolbar next to Translate button
 - Dynamically fetched from `/api/health` endpoint
-- Displays as subtle badge (e.g., "v1.3.6") with tooltip
+- Displays as subtle badge (e.g., "v1.3.7") with tooltip
 - Auto-updates when user upgrades package
 
 ### Playwright Installation Guide
@@ -296,7 +296,7 @@ playwright install chromium  # One-time setup for exports
 ## ⚠️ Important Notes
 
 1. **Always delete `dist/` before building** (per AGENTS.md) - prevents stale artifacts
-2. **Keep versions in sync**: pyproject.toml, package.json, __init__.py must all be 1.3.6
+2. **Keep versions in sync**: pyproject.toml, package.json, __init__.py must all be 1.3.7
 3. **Test installation before publishing** - PyPI packages cannot be deleted once published
 4. **PyPI credentials required** - Configure `~/.pypirc` or use `poetry config`
 5. **Wait ~5-10 minutes** after publishing for PyPI CDN to propagate
@@ -308,10 +308,10 @@ playwright install chromium  # One-time setup for exports
 
 Publish is successful when:
 
-1. ✅ PyPI package page shows version 1.3.6
-2. ✅ `pip install markdown-viewer-app` installs 1.3.6
-3. ✅ `mdview --version` shows "Markdown Viewer v1.3.6"
-4. ✅ UI displays version badge "v1.3.6"
+1. ✅ PyPI package page shows version 1.3.7
+2. ✅ `pip install markdown-viewer-app` installs 1.3.7
+3. ✅ `mdview --version` shows "Markdown Viewer v1.3.7"
+4. ✅ UI displays version badge "v1.3.7"
 5. ✅ All vendor files load without 404 errors
 6. ✅ TOC renders correctly with bold title
 7. ✅ Export features work (if Playwright installed)
@@ -335,10 +335,10 @@ Publish is successful when:
 # Complete publish workflow
 Remove-Item -Recurse -Force dist\* -ErrorAction SilentlyContinue
 poetry build
-python -m zipfile -l dist/markdown_viewer_app-1.3.6-py3-none-any.whl | Select-String "mermaid.min.js"
+python -m zipfile -l dist/markdown_viewer_app-1.3.7-py3-none-any.whl | Select-String "mermaid.min.js"
 poetry publish
-git tag -a v1.3.6 -m "Release v1.3.6: Version display, Playwright UX improvements, TOC fixes"
-git push origin v1.3.6
+git tag -a v1.3.7 -m "Release v1.3.7: Version display, Playwright UX improvements, TOC fixes"
+git push origin v1.3.7
 ```
 
 Then create GitHub release manually with release notes above.
@@ -358,3 +358,4 @@ Then create GitHub release manually with release notes above.
 **Prepared by**: GitHub Copilot  
 **Date**: 2026-05-03  
 **Status**: ✅ READY FOR PUBLISH
+

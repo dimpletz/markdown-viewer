@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "markdown-viewer-app"
-version = "1.3.6"
+version = "1.3.7"
 description = "Beautiful markdown viewer and renderer for CLI, CI/CD, and automated workflows"
 authors = ["Ofelia B Webb <ofelia.b.webb@gmail.com>"]
 license = "MIT"

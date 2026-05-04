@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.7] - 2026-05-04
+
+### Added
+- **Example Files**: Added `TABLE_BEFORE_TOC.md` demonstrating table placement before TOC marker
+  - Validates proper TOC placement when content precedes the `[TOC]` marker
+  - Shows summary table with document metadata
+  - Tests multi-level heading hierarchy in generated TOC
+
+### Changed
+- **Documentation**: Updated `PUBLISH_CHECKLIST.md` with comprehensive v1.3.7 workflow
+  - Added author verification checklist (Ofelia B Webb)
+  - Enhanced build and test procedures
+  - Included detailed release notes template
+  - Added quick publish commands for streamlined workflow
+
+### Fixed
+- **Repository Cleanup**: Removed test and debug artifacts
+  - Deleted test virtual environments (`test_debug_venv/`, `test_venv_old/`)
+  - Removed test scripts (`test_simple_local.ps1`, `test_upgrade_scenario.ps1`)
+  - Cleaned up test export files from examples folder
+  - Updated `.gitignore` to prevent future test artifacts
+
 ## [1.3.6] - 2026-05-03
 
 ### Added
