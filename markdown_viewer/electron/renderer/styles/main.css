@@ -330,7 +330,24 @@ body {
 .markdown-preview img {
   max-width: 100%;
   height: auto;
-  margin: 16px 0;
+  margin: 4px 8px 4px 0;
+  vertical-align: middle;
+  display: inline-block;
+}
+
+/* Badges and inline images should have minimal spacing */
+.markdown-preview img[src*="shields.io"],
+.markdown-preview img[src*="badge"],
+.markdown-preview img[src*="img.shields.io"] {
+  margin: 2px 6px 2px 0;
+  display: inline-block;
+}
+
+/* Paragraphs containing only images */
+.markdown-preview p:has(> img:only-child),
+.markdown-preview p:has(> img):has(> br) {
+  margin-bottom: 8px;
+  line-height: 1.2;
 }
 
 .markdown-preview table {
