@@ -18,7 +18,7 @@ Markdown Viewer is a cross-platform desktop + CLI markdown rendering app. **Back
 - markdown_viewer/electron/ — Electron shell (main.js, preload.js, renderer/)
 - markdown_viewer/electron/renderer/vendor/ — vendored frontend assets (marked, mermaid, katex, highlight.js, axios, DOMPurify)
 - tests/ — pytest suite (unit + integration + regression); mirrors package layout
-- README.md — user documentation; info banner "Need help?" links to `#-troubleshooting` anchor — keep that heading stable
+- README.md — user documentation with installation guide and troubleshooting section
 - tests/integration/ — end-to-end route/service workflows (render/export, favourites, translate, security)
 - tests/regression/ — permanent bug-guard tests for previously fixed defects
 - tests/test_renderer_vendor.py — validates local vendor-only frontend assets and no source-map directives
